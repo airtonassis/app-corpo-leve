@@ -23,6 +23,12 @@
         {
           "backgroundColor": "#FAF7F2"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#8A9A5B"
+        }
       ]
     ]
   }

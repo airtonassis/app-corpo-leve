@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { Pressable, Text, View, Image, StyleSheet } from 'react-native';
 import { Exercicio } from '../types';
 import { colors, radius, spacing, typography, shadow } from '../constants/theme';
 
@@ -16,6 +16,15 @@ export function ExercicioItem({ exercicio, concluido, onToggle }: ExercicioItemP
       style={[styles.container, shadow.card, concluido && styles.containerConcluido]}
       hitSlop={4}
     >
+      {/* Melhoria 4: imagem demonstrativa do exercício */}
+      {exercicio.imagemUrl && (
+        <Image
+          source={{ uri: exercicio.imagemUrl }}
+          style={styles.imagem}
+          accessibilityLabel={`Demonstração do exercício ${exercicio.nome}`}
+        />
+      )}
+
       <View style={[styles.checkbox, concluido && styles.checkboxMarcado]}>
         {concluido && <Text style={styles.checkmark}>✓</Text>}
       </View>
@@ -41,6 +50,12 @@ const styles = StyleSheet.create({
   },
   containerConcluido: {
     backgroundColor: colors.primaryLight,
+  },
+  imagem: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
   },
   checkbox: {
     width: 28,
