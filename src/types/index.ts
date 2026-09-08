@@ -78,3 +78,8 @@ export interface RegistroSemanal {
   proximaMeta: string;
   dataAtualizacao: string; // ISO date
 }
+
+// --- V2: avaliação adaptativa, perfil calculado e jornada de programas ---
+export * from './quiz';
+export * from './assessment';
+export * from './program';
