@@ -1,8 +1,15 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../src/constants/theme';
 
 export default function TabsLayout() {
+  // Usa a área segura do dispositivo (gestos/barra de navegação do Android,
+  // home indicator do iOS) para a barra de abas nunca ficar sobreposta.
+  const insets = useSafeAreaInsets();
+  const alturaBase = 56;
+  const paddingInferior = Math.max(insets.bottom, 10);
+
   return (
     <Tabs
       screenOptions={{
@@ -15,8 +22,8 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 64,
-          paddingBottom: 10,
+          height: alturaBase + paddingInferior,
+          paddingBottom: paddingInferior,
           paddingTop: 8,
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
