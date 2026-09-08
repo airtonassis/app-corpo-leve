@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useApp } from '../../src/context/AppContext';
 import { PrimaryButton } from '../../src/components/PrimaryButton';
 import { calcularImc, mensagemContextoImc } from '../../src/utils/imc';
-import { solicitarPermissaoNotificacoes } from '../../src/utils/notifications';
+import { solicitarPermissaoNotificacoes, notificacoesDisponiveis } from '../../src/utils/notifications';
 import { useResponsive } from '../../src/hooks/useResponsive';
 import { colors, spacing, typography, radius, shadow } from '../../src/constants/theme';
 
@@ -17,6 +17,14 @@ export default function PerfilScreen() {
 
   async function handleToggleNotificacoes(valor: boolean) {
     if (valor) {
+      if (!notificacoesDisponiveis()) {
+        Alert.alert(
+          'Disponível em breve por aqui',
+          'Notificações completas exigem um "development build" — no Expo Go elas ficam desativadas. ' +
+            'Gere um build com "eas build --profile development" para ativá-las.'
+        );
+        return;
+      }
       const concedida = await solicitarPermissaoNotificacoes();
       if (!concedida) {
         Alert.alert(
