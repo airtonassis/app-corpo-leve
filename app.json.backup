@@ -31,9 +31,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a4cdaded-abd3-4814-b464-69f291a7efe9"
+        "projectId": "c092e037-c9b5-40af-a942-246b5637d412"
       }
     },
-    "owner": "araservices-team"
+    "owner": "araservice"
   }
 }
