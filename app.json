@@ -2,17 +2,20 @@
   "expo": {
     "name": "Corpo Leve",
     "slug": "app-corpo-leve",
-    "scheme": "forcaleve",
+    "scheme": "corpolleve",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.forcaleve.app"
+      "bundleIdentifier": "com.araservices.corpolleve"
     },
+
     "android": {
-      "package": "com.forcaleve.app"
+      "package": "com.araservices.corpolleve"
     },
+
     "plugins": [
       "expo-router",
       [
@@ -28,12 +31,14 @@
         }
       ]
     ],
+
     "extra": {
       "router": {},
       "eas": {
         "projectId": "a4cdaded-abd3-4814-b464-69f291a7efe9"
       }
     },
+
     "owner": "araservices-team"
   }
 }
