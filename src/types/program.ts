@@ -180,6 +180,44 @@ export interface AvatarMovementDefinition {
   tempoLabel?: string;
 }
 
+export type ExerciseStartPosition =
+  | 'em_pe'
+  | 'sentado'
+  | 'deitado_costas'
+  | 'deitado_lado'
+  | 'quatro_apoios'
+  | 'prancha'
+  | 'suspenso'
+  | 'base_dividida';
+
+export type ExerciseVisualMatchStatus = 'mapped' | 'reference_only' | 'hidden';
+export type ExerciseTechnicalValidationStatus = 'pending' | 'approved' | 'revision_required';
+
+export interface ExerciseInstructionGuide {
+  startPosition: ExerciseStartPosition;
+  startPositionLabel: string;
+  supportLabel: string;
+  preparation: string[];
+  execution: string[];
+  returnInstructions: string[];
+  breathing: string[];
+  attentionPoints: string[];
+  environmentCheck?: string[];
+}
+
+export interface ExerciseVisualGuide {
+  status: ExerciseVisualMatchStatus;
+  note: string;
+}
+
+export interface ExerciseProfessionalReview {
+  status: ExerciseTechnicalValidationStatus;
+  version: string;
+  reviewedAt?: string;
+  reviewer?: string;
+  professionalRegistration?: string;
+}
+
 export interface ExerciseDefinition {
   id: string;
   name: string;
@@ -194,6 +232,9 @@ export interface ExerciseDefinition {
   progressionGroup?: string;
   progressionOrder?: number;
   avoidWhen?: string[];
+  instructionGuide?: ExerciseInstructionGuide;
+  visualGuide?: ExerciseVisualGuide;
+  professionalReview?: ExerciseProfessionalReview;
 }
 
 export interface ExercisePrescription {

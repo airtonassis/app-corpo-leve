@@ -165,6 +165,48 @@ function resolvePoseSet(exercise: ExerciseDefinition, motionKey: AvatarMotionKey
       retornar: withPose(POSES['core-floor'].retornar, { rootRotate: 88, rootY: 22, hipL: 50, kneeL: -78, hipR: -50, kneeR: 78 }),
     };
   }
+  if (exercise.id === 'bird-dog') {
+    return {
+      preparar: withPose(POSES.plank.preparar, { rootRotate: 72, rootY: 18, shoulderL: -72, elbowL: 78, shoulderR: -72, elbowR: 78, hipL: 34, kneeL: -82, hipR: -34, kneeR: 82 }),
+      executar: withPose(POSES.plank.executar, { rootRotate: 72, rootX: 2, rootY: 10, shoulderL: -150, elbowL: 5, shoulderR: -72, elbowR: 78, hipL: -12, kneeL: 4, hipR: -34, kneeR: 82 }),
+      retornar: withPose(POSES.plank.retornar, { rootRotate: 72, rootY: 18, shoulderL: -72, elbowL: 78, shoulderR: -72, elbowR: 78, hipL: 34, kneeL: -82, hipR: -34, kneeR: 82 }),
+    };
+  }
+  if (exercise.id === 'mob-catcow') {
+    return {
+      preparar: withPose(POSES.plank.preparar, { rootRotate: 72, rootY: 18, torsoRotate: 0, shoulderL: -72, elbowL: 78, shoulderR: -72, elbowR: 78, hipL: 34, kneeL: -82, hipR: -34, kneeR: 82 }),
+      executar: withPose(POSES.plank.executar, { rootRotate: 72, rootY: 15, torsoRotate: -14, shoulderL: -72, elbowL: 78, shoulderR: -72, elbowR: 78, hipL: 38, kneeL: -82, hipR: -38, kneeR: 82 }),
+      retornar: withPose(POSES.plank.retornar, { rootRotate: 72, rootY: 19, torsoRotate: 12, shoulderL: -72, elbowL: 78, shoulderR: -72, elbowR: 78, hipL: 30, kneeL: -82, hipR: -30, kneeR: 82 }),
+    };
+  }
+  if (exercise.id === 'mob-shoulder-wall') {
+    return {
+      preparar: withPose(POSES.mobility.preparar, { rootRotate: 6, rootX: 18, shoulderL: -82, elbowL: 8, shoulderR: -82, elbowR: 8 }),
+      executar: withPose(POSES.mobility.executar, { rootRotate: 6, rootX: 18, shoulderL: -150, elbowL: 4, shoulderR: -150, elbowR: 4 }),
+      retornar: withPose(POSES.mobility.retornar, { rootRotate: 6, rootX: 18, shoulderL: -82, elbowL: 8, shoulderR: -82, elbowR: 8 }),
+    };
+  }
+  if (exercise.id === 'mob-ankle') {
+    return {
+      preparar: withPose(POSES.lunge.preparar, { rootRotate: 4, rootX: 14, shoulderR: -70, elbowR: 12, hipL: -10, kneeL: 8, hipR: 22, kneeR: -15 }),
+      executar: withPose(POSES.lunge.executar, { rootRotate: 4, rootX: 20, rootY: 7, shoulderR: -70, elbowR: 12, hipL: 18, kneeL: -28, hipR: -10, kneeR: 14 }),
+      retornar: withPose(POSES.lunge.retornar, { rootRotate: 4, rootX: 14, shoulderR: -70, elbowR: 12, hipL: -10, kneeL: 8, hipR: 22, kneeR: -15 }),
+    };
+  }
+  if (exercise.id === 'warm-hip') {
+    return {
+      preparar: withPose(POSES.mobility.preparar, { shoulderR: -58, elbowR: 18 }),
+      executar: withPose(POSES.mobility.executar, { rootX: -7, torsoRotate: -4, hipL: 10, hipR: -12, shoulderR: -58, elbowR: 18 }),
+      retornar: withPose(POSES.mobility.retornar, { rootX: 7, torsoRotate: 4, hipL: -10, hipR: 12, shoulderR: -58, elbowR: 18 }),
+    };
+  }
+  if (exercise.id === 'cardio-step-touch' || exercise.id === 'cardio-step') {
+    return {
+      preparar: withPose(POSES.cardio.preparar, { rootX: 0 }),
+      executar: withPose(POSES.cardio.executar, { rootX: 10, rootY: -2, hipL: -18, kneeL: 16, hipR: 28, kneeR: -16 }),
+      retornar: withPose(POSES.cardio.retornar, { rootX: -10, rootY: -2, hipL: 28, kneeL: -16, hipR: -18, kneeR: 16 }),
+    };
+  }
   return base;
 }
 

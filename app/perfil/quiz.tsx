@@ -56,22 +56,29 @@ export default function QuizPerfilScreen() {
 
   useEffect(() => {
     let mounted = true;
+
+    // Regra de produto: avaliações incompletas não são retomadas.
+    // Ao entrar novamente no questionário, qualquer rascunho parcial é descartado
+    // e uma nova sessão começa desde a primeira pergunta. Apenas o resultado de
+    // uma avaliação finalizada é considerado válido pelo restante do aplicativo.
     loadAssessmentSession()
-      .then((stored) => {
-        if (!mounted || !stored || stored.completedAt) return;
-        setSession(stored);
-        setDisplayName(stored.displayName ?? perfil?.nome ?? '');
-        const eligibleAsked = stored.askedQuestionIds.filter((id) => {
-          const q = getEligibleQuestions(stored.answers).find((item) => item.id === id);
-          return Boolean(q);
-        });
-        setHistory(eligibleAsked);
-        const last = eligibleAsked[eligibleAsked.length - 1];
-        const next = last ?? getNextQuestion(stored.answers, [] )?.id ?? null;
-        setCurrentQuestionId(next);
-        setStarted(eligibleAsked.length > 0 || Object.keys(stored.answers).length > 0);
+      .then(async (stored) => {
+        if (!mounted) return;
+
+        if (stored && !stored.completedAt) {
+          await clearAssessmentSession();
+        }
+
+        if (!mounted) return;
+        const fresh = createSession();
+        setSession(fresh);
+        setDisplayName(perfil?.nome ?? '');
+        setHistory([]);
+        setCurrentQuestionId(null);
+        setStarted(false);
       })
       .finally(() => mounted && setLoading(false));
+
     return () => { mounted = false; };
   }, [perfil?.nome]);
 

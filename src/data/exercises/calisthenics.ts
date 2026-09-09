@@ -1,9 +1,10 @@
 import { ExerciseDefinition } from '../../types/program';
+import { exerciseInstructionCatalog } from './instructionCatalog';
 
 const allGoals = ['forca','condicionamento','mobilidade','consistencia','bem_estar'] as const;
 const allLevels = ['iniciante','base','intermediario','avancado'] as const;
 
-export const calisthenicsExercises: ExerciseDefinition[] = [
+const baseCalisthenicsExercises: ExerciseDefinition[] = [
   { id:'warm-march', name:'Marcha no lugar', category:'aquecimento', levels:[...allLevels], objectives:[...allGoals], equipment:['nenhum'], imageKey:'warm-march', instructions:['Mantenha postura confortável e marche no lugar em ritmo leve.','Movimente os braços naturalmente e respire sem prender o ar.'], safetyCues:['Comece leve e aumente o ritmo gradualmente.'] },
   { id:'warm-shoulder', name:'Mobilidade de ombros', category:'aquecimento', levels:[...allLevels], objectives:[...allGoals], equipment:['nenhum'], imageKey:'warm-shoulder', instructions:['Faça círculos pequenos e controlados com os ombros.','Aumente a amplitude apenas se estiver confortável.'], safetyCues:['Movimento sem dor e sem impulso.'], avoidWhen:['dor_ou_desconforto_atual'] },
   { id:'warm-hip', name:'Mobilidade de quadril', category:'aquecimento', levels:[...allLevels], objectives:[...allGoals], equipment:['nenhum'], imageKey:'warm-hip', instructions:['Em pé, faça movimentos controlados de quadril.','Mantenha os pés firmes e amplitude confortável.'], safetyCues:['Evite forçar a amplitude.'] },
@@ -66,5 +67,11 @@ export const calisthenicsExercises: ExerciseDefinition[] = [
   { id:'mob-hamstring-dynamic', name:'Mobilidade dinâmica posterior', category:'mobilidade', levels:[...allLevels], objectives:['mobilidade','bem_estar'], equipment:['nenhum'], imageKey:'mob-hamstring-dynamic', instructions:['Faça pequenos movimentos controlados de extensão do joelho.','Mantenha o tronco confortável.'], safetyCues:['Evite balanços rápidos.'] },
   { id:'mob-wrist', name:'Mobilidade de punhos', category:'mobilidade', levels:[...allLevels], objectives:['mobilidade','forca','consistencia'], equipment:['nenhum'], imageKey:'mob-wrist', instructions:['Faça círculos leves com os punhos.','Alterne direções sem forçar amplitude.'], safetyCues:['Movimento suave e sem dor.'] },
 ];
+
+export const calisthenicsExercises: ExerciseDefinition[] = baseCalisthenicsExercises.map((exercise) => ({
+  ...exercise,
+  ...exerciseInstructionCatalog[exercise.id],
+  professionalReview: { status: 'pending', version: '1.0.0-development' },
+}));
 
 export const exerciseById = Object.fromEntries(calisthenicsExercises.map(e => [e.id, e])) as Record<string, ExerciseDefinition>;

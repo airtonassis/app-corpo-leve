@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { router, useLocalSearchParams } from 'expo-router';
 import { PrimaryButton } from '../../../src/components/PrimaryButton';
 import { AvatarMovementGuide } from '../../../src/components/AvatarMovementGuide';
+import { ExerciseInstructionPanel } from '../../../src/components/ExerciseInstructionPanel';
 import { colors, radius, shadow, spacing, typography } from '../../../src/constants/theme';
 import { exerciseById } from '../../../src/data/exercises/calisthenics';
 import { generateProgramForCycle } from '../../../src/services/program/programResolver';
@@ -488,14 +489,21 @@ export default function ProgramDayScreen() {
           Série {setNumber} de {prescription.sets} · {prescription.reps ? `${prescription.reps} repetições` : `${prescription.seconds ?? 0}s`}
         </Text>
 
+        {mode === 'idle' ? <ExerciseInstructionPanel exercise={exercise} /> : null}
+
         <AvatarMovementGuide
           variant={avatarVariant}
           exercise={exercise}
           active={mode !== 'rest' && mode !== 'feedback'}
+          compact={mode === 'active'}
         />
 
-        {exercise.instructions.map((instruction) => <Text key={instruction} style={styles.instruction}>• {instruction}</Text>)}
-        <Text style={styles.safety}>Técnica primeiro: {exercise.safetyCues[0]}</Text>
+        {mode !== 'idle' ? (
+          <>
+            {exercise.instructionGuide?.attentionPoints.slice(0, 2).map((instruction) => <Text key={instruction} style={styles.instruction}>• {instruction}</Text>)}
+            <Text style={styles.safety}>Técnica primeiro: {exercise.safetyCues[0]}</Text>
+          </>
+        ) : null}
 
         {mode === 'rest' ? (
           <View style={styles.timerArea}>

@@ -65,11 +65,24 @@ export function AvatarMovementGuide({ variant, exercise, active = true, compact 
     [movement.techniquePoints, phase.key],
   );
 
+  const visualIsMapped = exercise.visualGuide?.status === 'mapped';
+
   return (
     <View style={styles.wrapper}>
-      <ExerciseAvatar variant={variant} exercise={exercise} active={active} compact phaseKey={phase.key} phaseDurationMs={phase.durationMs} coachPoints={activeCoachPoints} />
-
-      <AvatarCoachOverlay movement={movement} phaseKey={phase.key} compact={compact} />
+      {visualIsMapped ? (
+        <>
+          <ExerciseAvatar variant={variant} exercise={exercise} active={active} compact phaseKey={phase.key} phaseDurationMs={phase.durationMs} coachPoints={activeCoachPoints} />
+          <AvatarCoachOverlay movement={movement} phaseKey={phase.key} compact={compact} />
+        </>
+      ) : (
+        <View style={styles.visualReviewCard}>
+          <Text style={styles.visualReviewEyebrow}>DEMONSTRAÇÃO VISUAL EM REVISÃO</Text>
+          <Text style={styles.visualReviewTitle}>Use as instruções detalhadas deste exercício.</Text>
+          <Text style={styles.visualReviewText}>
+            {exercise.visualGuide?.note ?? 'Ainda não há uma animação específica confiável para este movimento.'}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.phaseRow}>
         {movement.phases.map((item, index) => (
@@ -150,4 +163,8 @@ const styles = StyleSheet.create({
   avoidTitle: { ...typography.caption, color: '#F2C66D', fontWeight: '800', textTransform: 'uppercase', marginBottom: 4 },
   avoidText: { ...typography.caption, color: '#D9D1C8', lineHeight: 18 },
   disclaimer: { ...typography.caption, color: '#8E9AA6', lineHeight: 17, marginTop: spacing.md },
+  visualReviewCard: { minHeight: 126, justifyContent: 'center', padding: spacing.md, borderRadius: radius.md, backgroundColor: '#111820', borderWidth: 1, borderColor: '#34404B' },
+  visualReviewEyebrow: { ...typography.caption, color: '#F2C66D', fontWeight: '900', letterSpacing: 0.55 },
+  visualReviewTitle: { ...typography.body, color: '#FFFFFF', fontWeight: '900', marginTop: 6 },
+  visualReviewText: { ...typography.bodyMuted, color: '#B8C2CB', lineHeight: 19, marginTop: 5 },
 });

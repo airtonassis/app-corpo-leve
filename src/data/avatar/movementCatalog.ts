@@ -158,6 +158,74 @@ const SPECIFIC_OVERRIDES: Record<string, Partial<AvatarMovementDefinition>> = {
     tempoLabel: 'Comece alto com acesso seguro • desça lentamente',
     commonMistakes: ['Saltar para alcançar a barra', 'Descer sem controle', 'Usar estrutura inadequada'],
   },
+  'warm-hip': {
+    phases: [
+      { key: 'preparar', title: 'Organize a base', cue: 'Fique em pé com os pés firmes e use apoio apenas se precisar.', durationMs: 900 },
+      { key: 'executar', title: 'Mova o quadril', cue: 'Faça um movimento pequeno e controlado, sem tirar os pés do chão.', durationMs: 1400 },
+      { key: 'retornar', title: 'Volte ao centro', cue: 'Retorne à posição neutra e repita sem impulso.', durationMs: 1100 },
+    ],
+    techniquePoints: [
+      { id: 'wh-feet', label: 'Pés firmes', region: 'pes', priority: 1 },
+      { id: 'wh-hip', label: 'Movimento pequeno e controlado', region: 'quadril', priority: 1 },
+      { id: 'wh-trunk', label: 'Tronco confortável', region: 'tronco', priority: 2 },
+    ],
+  },
+  'bird-dog': {
+    phases: [
+      { key: 'preparar', title: 'Quatro apoios', cue: 'Apoie mãos e joelhos e organize o tronco.', durationMs: 1000 },
+      { key: 'executar', title: 'Estenda lados opostos', cue: 'Alongue um braço e a perna oposta sem girar o tronco.', durationMs: 1500 },
+      { key: 'retornar', title: 'Volte ao centro', cue: 'Retorne aos quatro apoios antes de alternar o lado.', durationMs: 1200 },
+    ],
+    techniquePoints: [
+      { id: 'bd-hands', label: 'Mãos e joelhos bem apoiados', region: 'maos', priority: 2 },
+      { id: 'bd-trunk', label: 'Tronco estável', region: 'tronco', priority: 1 },
+      { id: 'bd-hip', label: 'Quadril sem girar', region: 'quadril', priority: 1 },
+    ],
+    commonMistakes: ['Girar o tronco', 'Erguer braço ou perna além do controle', 'Fazer o movimento rápido demais'],
+  },
+  'mob-catcow': {
+    phases: [
+      { key: 'preparar', title: 'Quatro apoios', cue: 'Apoie mãos e joelhos e encontre uma posição neutra.', durationMs: 1000 },
+      { key: 'executar', title: 'Arredonde suavemente', cue: 'Arredonde o tronco apenas dentro de uma amplitude confortável.', durationMs: 1500 },
+      { key: 'retornar', title: 'Faça o movimento oposto', cue: 'Retorne e explore a direção contrária sem forçar.', durationMs: 1500 },
+    ],
+    techniquePoints: [
+      { id: 'mc-support', label: 'Mãos e joelhos apoiados', region: 'maos', priority: 2 },
+      { id: 'mc-trunk', label: 'Movimento suave do tronco', region: 'tronco', priority: 1 },
+      { id: 'mc-breath', label: 'Respiração contínua', region: 'respiracao', priority: 2 },
+    ],
+  },
+  'mob-shoulder-wall': {
+    phases: [
+      { key: 'preparar', title: 'De frente para a parede', cue: 'Apoie as mãos em uma altura confortável.', durationMs: 900 },
+      { key: 'executar', title: 'Deslize os braços', cue: 'Mova os braços pela parede sem forçar o alcance.', durationMs: 1500 },
+      { key: 'retornar', title: 'Retorne', cue: 'Volte lentamente à posição inicial.', durationMs: 1200 },
+    ],
+    techniquePoints: [
+      { id: 'msw-hands', label: 'Mãos apoiadas', region: 'maos', priority: 2 },
+      { id: 'msw-shoulder', label: 'Ombros confortáveis', region: 'ombros', priority: 1 },
+      { id: 'msw-trunk', label: 'Tronco estável', region: 'tronco', priority: 2 },
+    ],
+  },
+  'mob-ankle': {
+    phases: [
+      { key: 'preparar', title: 'Pé inteiro no chão', cue: 'Posicione o pé à frente e mantenha o calcanhar apoiado.', durationMs: 900 },
+      { key: 'executar', title: 'Joelho à frente', cue: 'Leve o joelho suavemente à frente sem levantar o calcanhar.', durationMs: 1300 },
+      { key: 'retornar', title: 'Volte', cue: 'Retorne com controle e repita.', durationMs: 1100 },
+    ],
+    techniquePoints: [
+      { id: 'ma-heel', label: 'Calcanhar apoiado', region: 'pes', priority: 1 },
+      { id: 'ma-knee', label: 'Joelho controlado', region: 'joelhos', priority: 1 },
+      { id: 'ma-trunk', label: 'Apoio leve, se necessário', region: 'tronco', priority: 2 },
+    ],
+  },
+  'cardio-step-touch': {
+    phases: [
+      { key: 'preparar', title: 'Base confortável', cue: 'Fique em pé com espaço livre para os lados.', durationMs: 800 },
+      { key: 'executar', title: 'Passo para o lado', cue: 'Dê um passo lateral e aproxime o outro pé.', durationMs: 1100 },
+      { key: 'retornar', title: 'Troque o lado', cue: 'Repita para o outro lado mantendo o ritmo controlado.', durationMs: 1100 },
+    ],
+  },
 };
 
 export function getAvatarMovement(exercise: ExerciseDefinition, motionKey: AvatarMotionKey): AvatarMovementDefinition {

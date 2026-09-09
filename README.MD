@@ -501,3 +501,9 @@ Alterar o foco abre um novo bloco técnico para preservar imutabilidade do hist�
 A Home abre o hub quando a Jornada Contínua é a etapa atual.
 A tela de treino preserva o número do bloco nas rotas e cria o próximo bloco ao concluir a última prática.
 Minha Jornada e Modo Livre também resolvem o programa contínuo ativo.
+
+## Revisão de instruções dos exercícios — desenvolvimento
+
+Esta versão adiciona instruções estruturadas para os 49 exercícios do catálogo: posição inicial, apoio, preparação, execução, retorno, respiração, pontos de atenção e checagem do ambiente. O avatar agora só é exibido como demonstração quando o movimento está explicitamente mapeado; demonstrações genéricas ou incompatíveis são ocultadas e sinalizadas como em revisão. Todos os exercícios permanecem com `professionalReview.status = pending` até revisão formal por Profissional de Educação Física.
+
+Documento de apoio: `docs/technical/EXERCISE_CATALOG_REVIEW.md`.
