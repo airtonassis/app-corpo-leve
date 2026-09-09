@@ -1,218 +1,372 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ScrollView,
-  Text,
-  View,
-  TextInput,
-  StyleSheet,
-  Pressable,
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useApp } from '../../src/context/AppContext';
 import { PrimaryButton } from '../../src/components/PrimaryButton';
-import { calcularImc, mensagemContextoImc } from '../../src/utils/imc';
-import { NivelExperiencia } from '../../src/types';
-import { colors, spacing, typography, radius, shadow } from '../../src/constants/theme';
+import { QuizProgress } from '../../src/components/quiz/QuizProgress';
+import { QuizQuestionCard } from '../../src/components/quiz/QuizQuestionCard';
+import { colors, radius, shadow, spacing, typography } from '../../src/constants/theme';
+import { QuizAnswerMap, QuizAnswerValue, QuizQuestion, QuizSession } from '../../src/types/quiz';
+import {
+  canCompleteQuiz,
+  getEligibleQuestions,
+  getNextQuestion,
+  isQuestionEligible,
+} from '../../src/services/assessment/quizEngine';
+import { buildAssessmentProfile } from '../../src/services/assessment/profileEngine';
+import { recommendInitialProgram } from '../../src/services/assessment/recommendationEngine';
+import {
+  clearAssessmentSession,
+  loadAssessmentSession,
+  saveAssessmentResult,
+  saveAssessmentSession,
+} from '../../src/services/storage/assessmentStorage';
 
-const NIVEIS: { id: NivelExperiencia; label: string }[] = [
-  { id: 'iniciante', label: 'Iniciante' },
-  { id: 'intermediaria', label: 'Intermediária' },
-  { id: 'avancada', label: 'Avançada' },
-];
+const TARGET_MIN = 20;
+const TARGET_MAX = 35;
+
+function createSession(): QuizSession {
+  return {
+    id: `assessment-${Date.now()}`,
+    startedAt: new Date().toISOString(),
+    answers: {},
+    askedQuestionIds: [],
+  };
+}
 
 export default function QuizPerfilScreen() {
   const { perfil, salvarPerfil } = useApp();
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<QuizSession>(() => createSession());
+  const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const [displayName, setDisplayName] = useState(perfil?.nome ?? '');
+  const [started, setStarted] = useState(false);
 
-  const [nome, setNome] = useState(perfil?.nome ?? '');
-  const [idade, setIdade] = useState(perfil ? String(perfil.idade) : '');
-  const [pesoKg, setPesoKg] = useState(perfil ? String(perfil.pesoKg) : '');
-  const [alturaCm, setAlturaCm] = useState(perfil ? String(perfil.alturaCm) : '');
-  const [nivel, setNivel] = useState<NivelExperiencia>(perfil?.nivelExperiencia ?? 'iniciante');
-  const [objetivo, setObjetivo] = useState(perfil?.objetivo ?? '');
+  useEffect(() => {
+    let mounted = true;
+    loadAssessmentSession()
+      .then((stored) => {
+        if (!mounted || !stored || stored.completedAt) return;
+        setSession(stored);
+        setDisplayName(stored.displayName ?? perfil?.nome ?? '');
+        const eligibleAsked = stored.askedQuestionIds.filter((id) => {
+          const q = getEligibleQuestions(stored.answers).find((item) => item.id === id);
+          return Boolean(q);
+        });
+        setHistory(eligibleAsked);
+        const last = eligibleAsked[eligibleAsked.length - 1];
+        const next = last ?? getNextQuestion(stored.answers, [] )?.id ?? null;
+        setCurrentQuestionId(next);
+        setStarted(eligibleAsked.length > 0 || Object.keys(stored.answers).length > 0);
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, [perfil?.nome]);
 
-  const pesoNum = parseFloat(pesoKg.replace(',', '.'));
-  const alturaNum = parseFloat(alturaCm.replace(',', '.'));
-  const imc = calcularImc(pesoNum, alturaNum);
+  const currentQuestion = useMemo<QuizQuestion | undefined>(() => {
+    if (!currentQuestionId) return undefined;
+    return getEligibleQuestions(session.answers).find((question) => question.id === currentQuestionId);
+  }, [currentQuestionId, session.answers]);
 
-  function handleSalvar() {
-    const idadeNum = parseInt(idade, 10);
+  const answeredCount = Object.values(session.answers).filter(hasValue).length;
+  const estimatedTotal = Math.min(TARGET_MAX, Math.max(TARGET_MIN, getEligibleQuestions(session.answers).filter((q) => q.required || q.priority <= 4).length));
 
-    if (!nome.trim() || !idadeNum || !pesoNum || !alturaNum) {
-      Alert.alert('Quase lá!', 'Preencha nome, idade, peso e altura para continuar.');
+  function persist(next: QuizSession) {
+    setSession(next);
+    saveAssessmentSession(next).catch(() => {
+      // Persistência não deve bloquear o questionário.
+    });
+  }
+
+  function startQuiz() {
+    if (!displayName.trim()) {
+      Alert.alert('Como podemos te chamar?', 'Informe um nome ou apelido para personalizar sua jornada.');
+      return;
+    }
+    const next = { ...session, displayName: displayName.trim() };
+    persist(next);
+    const first = getNextQuestion(next.answers, next.askedQuestionIds);
+    if (!first) return;
+    setHistory([first.id]);
+    setCurrentQuestionId(first.id);
+    persist({ ...next, askedQuestionIds: [first.id] });
+    setStarted(true);
+  }
+
+  function updateAnswer(value: QuizAnswerValue) {
+    if (!currentQuestion) return;
+    const rawAnswers: QuizAnswerMap = { ...session.answers, [currentQuestion.id]: value };
+
+    // Remove respostas de ramos que deixaram de ser elegíveis quando o usuário volta e muda algo.
+    const validIds = new Set(
+      getEligibleQuestions(rawAnswers)
+        .filter((question) => isQuestionEligible(question, rawAnswers))
+        .map((question) => question.id)
+    );
+    const prunedAnswers: QuizAnswerMap = {};
+    Object.entries(rawAnswers).forEach(([id, answer]) => {
+      if (validIds.has(id) || id === currentQuestion.id) prunedAnswers[id] = answer;
+    });
+
+    persist({ ...session, displayName: displayName.trim(), answers: prunedAnswers });
+  }
+
+  function validateCurrent(): boolean {
+    if (!currentQuestion) return false;
+    const value = session.answers[currentQuestion.id];
+    if (!currentQuestion.required || hasValue(value)) {
+      if (currentQuestion.type === 'number' && hasValue(value)) {
+        const numberValue = Number(value);
+        if (currentQuestion.min !== undefined && numberValue < currentQuestion.min) {
+          Alert.alert('Confira sua resposta', `O valor mínimo esperado é ${currentQuestion.min}${currentQuestion.unit ? ` ${currentQuestion.unit}` : ''}.`);
+          return false;
+        }
+        if (currentQuestion.max !== undefined && numberValue > currentQuestion.max) {
+          Alert.alert('Confira sua resposta', `O valor máximo esperado é ${currentQuestion.max}${currentQuestion.unit ? ` ${currentQuestion.unit}` : ''}.`);
+          return false;
+        }
+      }
+      return true;
+    }
+    Alert.alert('Resposta necessária', 'Responda esta pergunta para continuar.');
+    return false;
+  }
+
+  async function nextQuestion() {
+    if (!validateCurrent() || !currentQuestion) return;
+
+    const asked = Array.from(new Set([...session.askedQuestionIds, currentQuestion.id]));
+    const next = getNextQuestion(session.answers, asked);
+
+    // O fluxo adaptativo encerra quando não há mais perguntas relevantes ou quando
+    // já há informação suficiente e todas as obrigatórias foram respondidas.
+    const enoughAnswers = answeredCount >= TARGET_MIN && canCompleteQuiz(session.answers);
+    const shouldFinish = !next || (enoughAnswers && next.priority >= 7);
+
+    if (shouldFinish) {
+      await finishQuiz();
       return;
     }
 
-    salvarPerfil({
-      nome: nome.trim(),
-      idade: idadeNum,
-      pesoKg: pesoNum,
-      alturaCm: alturaNum,
-      nivelExperiencia: nivel,
-      objetivo: objetivo.trim(),
-      quizConcluido: true,
-      atualizadoEm: new Date().toISOString(),
+    const nextHistory = [...history.filter((id) => id !== next.id), next.id];
+    setHistory(nextHistory);
+    setCurrentQuestionId(next.id);
+    persist({ ...session, askedQuestionIds: Array.from(new Set([...asked, next.id])) });
+  }
+
+  function previousQuestion() {
+    if (history.length <= 1) return;
+    const nextHistory = history.slice(0, -1);
+    const previous = nextHistory[nextHistory.length - 1];
+    setHistory(nextHistory);
+    setCurrentQuestionId(previous);
+  }
+
+  async function finishQuiz() {
+    if (!canCompleteQuiz(session.answers)) {
+      const pending = getEligibleQuestions(session.answers).find(
+        (question) => question.required && !hasValue(session.answers[question.id])
+      );
+      if (pending) {
+        setCurrentQuestionId(pending.id);
+        setHistory((prev) => [...prev.filter((id) => id !== pending.id), pending.id]);
+        Alert.alert('Falta só um pouco', 'Ainda temos uma pergunta essencial para completar seu perfil.');
+      }
+      return;
+    }
+
+    const profile = buildAssessmentProfile(session.answers);
+    const recommendation = recommendInitialProgram(profile);
+    const completedAt = new Date().toISOString();
+
+    await saveAssessmentResult({
+      answers: session.answers,
+      profile,
+      recommendation,
+      completedAt,
     });
 
-    router.back();
+    const age = toNumber(session.answers.PERF_001);
+    const weight = toNumber(session.answers.PERF_003);
+    const height = toNumber(session.answers.PERF_002);
+
+    salvarPerfil({
+      nome: displayName.trim() || session.displayName || 'Usuário',
+      idade: age ?? 0,
+      pesoKg: weight,
+      alturaCm: height,
+      nivelExperiencia:
+        profile.nivelCalculado === 'avancado'
+          ? 'avancada'
+          : profile.nivelCalculado === 'intermediario'
+            ? 'intermediaria'
+            : 'iniciante',
+      objetivo: objectiveLabel(profile.objetivoPrincipal),
+      quizConcluido: true,
+      atualizadoEm: completedAt,
+    });
+
+    await clearAssessmentSession();
+    router.replace('/perfil/resultado');
+  }
+
+  async function restartQuiz() {
+    await clearAssessmentSession();
+    const fresh = createSession();
+    setSession(fresh);
+    setHistory([]);
+    setCurrentQuestionId(null);
+    setStarted(false);
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Preparando sua avaliação...</Text>
+      </View>
+    );
+  }
+
+  if (!started) {
+    return (
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Text style={typography.h1}>Avaliação Adaptativa</Text>
+          <Text style={styles.subtitle}>
+            O Corpo Leve escolhe as próximas perguntas conforme suas respostas. O objetivo é entender seu ponto de partida, rotina e expectativa sem fazer perguntas desnecessárias.
+          </Text>
+
+          <View style={[styles.introCard, shadow.card]}>
+            <Text style={styles.introTitle}>Como podemos te chamar?</Text>
+            <TextInput
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Nome ou apelido"
+              placeholderTextColor={colors.textMuted}
+              style={styles.nameInput}
+              autoCapitalize="words"
+            />
+            <View style={styles.infoBox}>
+              <Text style={styles.infoTitle}>Como funciona</Text>
+              <Text style={styles.infoText}>• banco com 90 perguntas;</Text>
+              <Text style={styles.infoText}>• você responde apenas as relevantes ao seu perfil;</Text>
+              <Text style={styles.infoText}>• em geral, cerca de 20 a 35 perguntas;</Text>
+              <Text style={styles.infoText}>• você pode voltar e corrigir respostas;</Text>
+              <Text style={styles.infoText}>• respostas opcionais podem ser ignoradas.</Text>
+            </View>
+            <PrimaryButton label="Começar avaliação" onPress={startQuiz} style={{ marginTop: spacing.md }} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  if (!currentQuestion) {
+    return (
+      <View style={styles.loading}>
+        <Text style={typography.h2}>Perfil pronto para finalizar</Text>
+        <PrimaryButton label="Ver meu resultado" onPress={finishQuiz} style={{ marginTop: spacing.lg }} />
+      </View>
+    );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={80}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={typography.h1}>Vamos te conhecer</Text>
-        <Text style={styles.subtitle}>
-          Essas informações ajudam a acompanhar sua evolução ao longo do Método 4F.
-        </Text>
+        <QuizProgress current={Math.max(answeredCount + 1, 1)} estimatedTotal={estimatedTotal} />
 
-        <View style={[styles.card, shadow.card]}>
-          <Campo label="Nome">
-            <TextInput
-              style={styles.input}
-              placeholder="Como podemos te chamar?"
-              placeholderTextColor={colors.textMuted}
-              value={nome}
-              onChangeText={setNome}
-            />
-          </Campo>
-
-          <Campo label="Idade">
-            <TextInput
-              style={styles.input}
-              placeholder="Ex: 28"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-              value={idade}
-              onChangeText={setIdade}
-            />
-          </Campo>
-
-          <View style={styles.linha}>
-            <Campo label="Peso (kg)" style={{ flex: 1 }}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 65"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="decimal-pad"
-                value={pesoKg}
-                onChangeText={setPesoKg}
-              />
-            </Campo>
-            <Campo label="Altura (cm)" style={{ flex: 1 }}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 165"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="decimal-pad"
-                value={alturaCm}
-                onChangeText={setAlturaCm}
-              />
-            </Campo>
-          </View>
-
-          {/* Cálculo de IMC em tempo real */}
-          {imc.valor > 0 && (
-            <View style={styles.imcBox}>
-              <Text style={styles.imcValor}>IMC: {imc.valor}</Text>
-              <Text style={styles.imcClassificacao}>{imc.classificacao}</Text>
-              <Text style={styles.imcContexto}>{mensagemContextoImc(imc.classificacao)}</Text>
-            </View>
-          )}
-
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Nível de experiência</Text>
-          <View style={styles.niveis}>
-            {NIVEIS.map((n) => (
-              <Pressable
-                key={n.id}
-                onPress={() => setNivel(n.id)}
-                style={[styles.nivelChip, nivel === n.id && styles.nivelChipAtivo]}
-              >
-                <Text style={[styles.nivelTexto, nivel === n.id && styles.nivelTextoAtivo]}>
-                  {n.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Campo label="Seu objetivo" style={{ marginTop: spacing.md }}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex: Ganhar força e confiança"
-              placeholderTextColor={colors.textMuted}
-              value={objetivo}
-              onChangeText={setObjetivo}
-            />
-          </Campo>
-
-          <PrimaryButton label="Salvar meu perfil" onPress={handleSalvar} style={{ marginTop: spacing.lg }} />
+        <View style={{ marginTop: spacing.lg }}>
+          <QuizQuestionCard
+            question={currentQuestion}
+            value={session.answers[currentQuestion.id]}
+            onChange={updateAnswer}
+          />
         </View>
+
+        <View style={styles.actions}>
+          <Pressable onPress={previousQuestion} disabled={history.length <= 1} style={[styles.backButton, history.length <= 1 && styles.disabled]}>
+            <Text style={styles.backText}>Voltar</Text>
+          </Pressable>
+          <View style={styles.nextWrap}>
+            <PrimaryButton label="Continuar" onPress={nextQuestion} />
+          </View>
+        </View>
+
+        {!currentQuestion.required && (
+          <Pressable onPress={nextQuestion} style={styles.skipButton}>
+            <Text style={styles.skipText}>Prefiro não responder agora</Text>
+          </Pressable>
+        )}
+
+        <Pressable onPress={restartQuiz} style={styles.restartButton}>
+          <Text style={styles.restartText}>Recomeçar avaliação</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function Campo({
-  label,
-  children,
-  style,
-}: {
-  label: string;
-  children: React.ReactNode;
-  style?: object;
-}) {
-  return (
-    <View style={[{ marginBottom: spacing.md }, style]}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
-    </View>
-  );
+function hasValue(value: QuizAnswerValue | undefined): boolean {
+  if (value === undefined || value === null || value === '') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function toNumber(value: QuizAnswerValue | undefined): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function objectiveLabel(value?: string): string {
+  const labels: Record<string, string> = {
+    forca: 'Desenvolver força',
+    condicionamento: 'Melhorar condicionamento',
+    mobilidade: 'Melhorar mobilidade',
+    consistencia: 'Criar consistência',
+    bem_estar: 'Mais disposição e bem-estar',
+  };
+  return value ? labels[value] ?? value : 'Criar consistência';
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  subtitle: { ...typography.bodyMuted, marginTop: spacing.xs, marginBottom: spacing.lg },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
-  linha: { flexDirection: 'row', gap: spacing.md },
-  label: { ...typography.caption, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  input: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    ...typography.body,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  imcBox: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  imcValor: { ...typography.h3 },
-  imcClassificacao: { ...typography.body, fontWeight: '600', marginTop: 2 },
-  imcContexto: { ...typography.bodyMuted, marginTop: spacing.xs },
-  niveis: { flexDirection: 'row', gap: spacing.sm },
-  nivelChip: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  nivelChipAtivo: { backgroundColor: colors.primary, borderColor: colors.primary },
-  nivelTexto: { ...typography.bodyMuted, fontWeight: '600' },
-  nivelTextoAtivo: { color: colors.textInverse },
+  subtitle: { ...typography.bodyMuted, lineHeight: 21, marginTop: spacing.sm, marginBottom: spacing.lg },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, padding: spacing.lg },
+  loadingText: { ...typography.bodyMuted, marginTop: spacing.md },
+  introCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
+  introTitle: { ...typography.h3 },
+  nameInput: { minHeight: 54, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, ...typography.body, marginTop: spacing.sm },
+  infoBox: { backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.lg, gap: spacing.xs },
+  infoTitle: { ...typography.body, fontWeight: '800', color: colors.primaryDark, marginBottom: spacing.xs },
+  infoText: { ...typography.bodyMuted, color: colors.text },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
+  backButton: { minHeight: 52, minWidth: 96, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md },
+  backText: { ...typography.body, fontWeight: '700' },
+  nextWrap: { flex: 1 },
+  disabled: { opacity: 0.4 },
+  skipButton: { alignItems: 'center', paddingVertical: spacing.md },
+  skipText: { ...typography.bodyMuted, textDecorationLine: 'underline' },
+  restartButton: { alignItems: 'center', paddingVertical: spacing.lg },
+  restartText: { ...typography.caption, color: colors.textMuted },
 });

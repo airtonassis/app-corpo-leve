@@ -13,7 +13,7 @@ export default function PerfilScreen() {
     useApp();
   const { maxContentWidth } = useResponsive();
 
-  const imc = perfil ? calcularImc(perfil.pesoKg, perfil.alturaCm) : null;
+  const imc = perfil?.pesoKg && perfil?.alturaCm ? calcularImc(perfil.pesoKg, perfil.alturaCm) : null;
 
   async function handleToggleNotificacoes(valor: boolean) {
     if (valor) {
@@ -54,10 +54,10 @@ export default function PerfilScreen() {
           <View style={[styles.card, shadow.card, { marginTop: spacing.lg }]}>
             <Text style={styles.cardTitulo}>Complete seu perfil</Text>
             <Text style={styles.cardTexto}>
-              Preencha idade, peso e altura para calcular seu IMC e acompanhar sua evolução.
+              Faça a Avaliação Adaptativa para criar seu ponto de partida e personalizar sua jornada.
             </Text>
             <PrimaryButton
-              label="Preencher agora"
+              label="Fazer avaliação"
               onPress={() => router.push('/perfil/quiz')}
               style={{ marginTop: spacing.md }}
             />
@@ -67,7 +67,7 @@ export default function PerfilScreen() {
             <View style={[styles.card, shadow.card, { marginTop: spacing.lg }]}>
               <Text style={styles.cardTitulo}>Olá, {perfil.nome} 👋</Text>
               <Text style={styles.cardTexto}>
-                {perfil.idade} anos · {perfil.pesoKg}kg · {perfil.alturaCm}cm
+                {perfil.idade} anos{perfil.pesoKg ? ` · ${perfil.pesoKg}kg` : ''}{perfil.alturaCm ? ` · ${perfil.alturaCm}cm` : ''}
               </Text>
 
               {imc && (
@@ -79,7 +79,7 @@ export default function PerfilScreen() {
               )}
 
               <PrimaryButton
-                label="Atualizar dados"
+                label="Atualizar avaliação"
                 variant="outline"
                 onPress={() => router.push('/perfil/quiz')}
                 style={{ marginTop: spacing.md }}

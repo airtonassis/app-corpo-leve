@@ -7,8 +7,11 @@ export type ObjetivoPrincipal =
 
 export type NivelCalculado = 'iniciante' | 'base' | 'intermediario' | 'avancado';
 
+export type AvatarVariant = 'feminino' | 'masculino' | 'neutro';
+
 export interface AssessmentProfile {
   objetivoPrincipal?: ObjetivoPrincipal;
+  avatarVariant: AvatarVariant;
   nivelCalculado: NivelCalculado;
   disponibilidadeMinutos?: number;
   frequenciaSemanal?: number;
@@ -20,6 +23,8 @@ export interface AssessmentProfile {
   scoreEnergia?: number;
   barreiras: string[];
   preferencias: string[];
+  recursosDisponiveis: string[];
+  regioesAtencao: string[];
   pontosAtencao: string[];
   generatedAt: string;
 }

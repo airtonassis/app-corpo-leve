@@ -22,8 +22,8 @@ export type NivelExperiencia = 'iniciante' | 'intermediaria' | 'avancada';
 export interface PerfilUsuario {
   nome: string;
   idade: number;
-  pesoKg: number;
-  alturaCm: number;
+  pesoKg?: number;
+  alturaCm?: number;
   nivelExperiencia: NivelExperiencia;
   objetivo: string;
   quizConcluido: boolean;

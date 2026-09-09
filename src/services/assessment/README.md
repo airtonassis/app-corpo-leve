@@ -1,4 +1,4 @@
-# Avaliação Adaptativa — Força Leve V2
+# Avaliação Adaptativa — Corpo Leve V2
 
 ## Objetivo
 

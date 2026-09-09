@@ -83,6 +83,7 @@ export type QuizAnswerMap = Record<string, QuizAnswerValue>;
 
 export interface QuizSession {
   id: string;
+  displayName?: string;
   startedAt: string;
   completedAt?: string;
   answers: QuizAnswerMap;

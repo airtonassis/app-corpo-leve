@@ -18,7 +18,7 @@ export default function DashboardScreen() {
     >
       {/* Boas-vindas */}
       <View style={styles.welcomeBox}>
-        <Text style={styles.eyebrow}>FORÇA LEVE</Text>
+        <Text style={styles.eyebrow}>CORPO LEVE</Text>
         <Text style={typography.h1}>
           Você não precisa estar forte{'\n'}para começar.
         </Text>

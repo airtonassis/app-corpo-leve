@@ -46,7 +46,7 @@ async function configurarHandlerSeNecessario(
 export async function solicitarPermissaoNotificacoes(): Promise<boolean> {
   if (isExpoGo) {
     console.log(
-      '[Força Leve] Notificações completas exigem um development build; ' +
+      '[Corpo Leve] Notificações completas exigem um development build; ' +
         'no Expo Go elas ficam desativadas automaticamente.'
     );
     return false;
@@ -73,7 +73,7 @@ export async function solicitarPermissaoNotificacoes(): Promise<boolean> {
 
     return statusFinal === 'granted';
   } catch (erro) {
-    console.warn('[Força Leve] Não foi possível configurar notificações:', erro);
+    console.warn('[Corpo Leve] Não foi possível configurar notificações:', erro);
     return false;
   }
 }
@@ -93,7 +93,7 @@ export async function agendarLembreteDiario(hora = 20, minuto = 0): Promise<void
     await Notifications.scheduleNotificationAsync({
       identifier: ID_LEMBRETE_DIARIO,
       content: {
-        title: 'Força Leve 🌿',
+        title: 'Corpo Leve 🌿',
         body: 'Você ainda não concluiu o treino de hoje. Que tal 15 minutos agora?',
       },
       trigger: {
@@ -103,7 +103,7 @@ export async function agendarLembreteDiario(hora = 20, minuto = 0): Promise<void
       },
     });
   } catch (erro) {
-    console.warn('[Força Leve] Não foi possível agendar o lembrete diário:', erro);
+    console.warn('[Corpo Leve] Não foi possível agendar o lembrete diário:', erro);
   }
 }
 
@@ -138,7 +138,7 @@ export async function notificarConquista(texto: string): Promise<void> {
       trigger: null, // dispara imediatamente
     });
   } catch (erro) {
-    console.warn('[Força Leve] Não foi possível enviar notificação:', erro);
+    console.warn('[Corpo Leve] Não foi possível enviar notificação:', erro);
   }
 }
 

@@ -1,5 +1,5 @@
 /**
- * Força Leve — Design Tokens
+ * Corpo Leve — Design Tokens
  * Paleta suave e acolhedora: verde oliva, areia, branco e grafite.
  */
 

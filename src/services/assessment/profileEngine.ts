@@ -21,6 +21,13 @@ function levelFromPerformance(answers: QuizAnswerMap): NivelCalculado {
   return 'iniciante';
 }
 
+function avatarVariantFromAnswers(answers: QuizAnswerMap): AssessmentProfile['avatarVariant'] {
+  const informed = String(answers.PERF_004 ?? 'nao_informar');
+  if (informed === 'feminino') return 'feminino';
+  if (informed === 'masculino') return 'masculino';
+  return 'neutro';
+}
+
 export function buildAssessmentProfile(answers: QuizAnswerMap): AssessmentProfile {
   const objective = answers.OBJ_001 as ObjetivoPrincipal | undefined;
   const pushups = n(answers.FIT_001);
@@ -36,6 +43,8 @@ export function buildAssessmentProfile(answers: QuizAnswerMap): AssessmentProfil
 
   const barriers = answers.MOT_006 ? [String(answers.MOT_006)] : [];
   const preferences = Array.isArray(answers.OBJ_010) ? answers.OBJ_010.map(String) : [];
+  const resources = Array.isArray(answers.PERF_010) ? answers.PERF_010.map(String) : [];
+  const attentionRegions = Array.isArray(answers.SAFE_002) ? answers.SAFE_002.map(String) : [];
   const attention: string[] = [];
 
   if (answers.SAFE_001 === 'sim') attention.push('dor_ou_desconforto_atual');
@@ -45,6 +54,7 @@ export function buildAssessmentProfile(answers: QuizAnswerMap): AssessmentProfil
 
   return {
     objetivoPrincipal: objective,
+    avatarVariant: avatarVariantFromAnswers(answers),
     nivelCalculado: levelFromPerformance(answers),
     disponibilidadeMinutos: n(answers.OBJ_006) || undefined,
     frequenciaSemanal: n(answers.OBJ_007) || undefined,
@@ -55,6 +65,8 @@ export function buildAssessmentProfile(answers: QuizAnswerMap): AssessmentProfil
     scoreEnergia: clamp(((wakeEnergy + dailyEnergy) / 10) * 100),
     barreiras: barriers,
     preferencias: preferences,
+    recursosDisponiveis: resources,
+    regioesAtencao: attentionRegions,
     pontosAtencao: attention,
     generatedAt: new Date().toISOString(),
   };
