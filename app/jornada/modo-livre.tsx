@@ -4,11 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { colors, radius, shadow, spacing, typography } from '../../src/constants/theme';
 import { exerciseById } from '../../src/data/exercises/calisthenics';
-import { generateCycle1Program } from '../../src/services/program/cycle1Engine';
+import { generateProgramForCycle } from '../../src/services/program/programResolver';
+import { buildJourneyProgramState } from '../../src/services/program/journeyProgramEngine';
 import { buildFreeSessionGuard } from '../../src/services/journey/freeSessionGuardEngine';
 import { saveFreeSession } from '../../src/services/journey/freeSessionStorage';
 import { loadAssessmentResult } from '../../src/services/storage/assessmentStorage';
 import { loadProgramExecutions } from '../../src/services/workout/executionStorage';
+import { refreshLongitudinalJourneyMemory } from '../../src/services/journey/journeyMemoryStorage';
+import { loadContinuousJourneyState } from '../../src/services/journey/continuousJourneyStorage';
 import {
   FreeExerciseOption,
   FreeSessionGuardResult,
@@ -49,10 +52,19 @@ export default function FreeModeScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
-    Promise.all([loadAssessmentResult(), loadProgramExecutions()])
-      .then(([assessment, executions]) => {
+    Promise.all([
+      loadAssessmentResult(),
+      loadProgramExecutions(),
+      refreshLongitudinalJourneyMemory(),
+      loadContinuousJourneyState(),
+    ])
+      .then(([assessment, executions, journeyMemory, continuousState]) => {
         if (!assessment) return;
-        const currentProgram = generateCycle1Program(assessment.profile);
+        const journey = buildJourneyProgramState(executions);
+        const currentProgram =
+          generateProgramForCycle(assessment.profile, journey.currentCycle, journeyMemory, continuousState) ??
+          generateProgramForCycle(assessment.profile, 1, journeyMemory, continuousState);
+        if (!currentProgram) return;
         setProgram(currentProgram);
         setGuard(buildFreeSessionGuard(assessment.profile, currentProgram, executions));
       })

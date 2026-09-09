@@ -5,13 +5,16 @@ import { PrimaryButton } from '../../../src/components/PrimaryButton';
 import { AvatarMovementGuide } from '../../../src/components/AvatarMovementGuide';
 import { colors, radius, shadow, spacing, typography } from '../../../src/constants/theme';
 import { exerciseById } from '../../../src/data/exercises/calisthenics';
-import { generateCycle1Program } from '../../../src/services/program/cycle1Engine';
+import { generateProgramForCycle } from '../../../src/services/program/programResolver';
+import { cycleDefinition } from '../../../src/services/program/cycleCatalog';
 import { adaptProgramForHistory, getAdaptationDecisionsForDay, summarizeAdaptationForDay } from '../../../src/services/program/adaptiveProgramEngine';
 import { loadAssessmentResult } from '../../../src/services/storage/assessmentStorage';
 import { loadProgramExecutions, saveProgramDayExecution } from '../../../src/services/workout/executionStorage';
 import { upsertAdaptationDecisions } from '../../../src/services/journey/adaptationStorage';
 import { loadDailyAvailability, upsertDailyAvailability } from '../../../src/services/journey/availabilityStorage';
 import { buildAvailabilityInsight } from '../../../src/services/journey/availabilityInsights';
+import { refreshLongitudinalJourneyMemory } from '../../../src/services/journey/journeyMemoryStorage';
+import { completeContinuousJourneyBlock, loadContinuousJourneyState } from '../../../src/services/journey/continuousJourneyStorage';
 import { composeSessionForAvailability } from '../../../src/services/program/sessionComposerEngine';
 import { AvatarVariant, EffortFeedback, ExerciseExecutionRecord, ProgramDefinition, ProgramDay, SessionAvailabilityOption, SessionCompositionMeta, SetExecutionRecord } from '../../../src/types/program';
 
@@ -25,8 +28,10 @@ function formatSeconds(total: number): string {
 }
 
 export default function ProgramDayScreen() {
-  const params = useLocalSearchParams<{ day: string }>();
-  const requestedDay = Math.max(1, Math.min(21, Number(params.day ?? '1')));
+  const params = useLocalSearchParams<{ day: string; cycle?: string; block?: string }>();
+  const requestedCycle = Math.max(1, Number(params.cycle ?? '1'));
+  const requestedDay = Math.max(1, Number(params.day ?? '1'));
+  const requestedBlock = Math.max(1, Number(params.block ?? '1'));
   const [program, setProgram] = useState<ProgramDefinition | null>(null);
   const [avatarVariant, setAvatarVariant] = useState<AvatarVariant>('neutro');
   const [loading, setLoading] = useState(true);
@@ -35,6 +40,7 @@ export default function ProgramDayScreen() {
   const [sessionDay, setSessionDay] = useState<ProgramDay | null>(null);
   const [sessionComposition, setSessionComposition] = useState<SessionCompositionMeta | null>(null);
   const [availabilityChosen, setAvailabilityChosen] = useState(false);
+  const [autonomyChoices, setAutonomyChoices] = useState<Record<string, string>>({});
   const [executionHistory, setExecutionHistory] = useState<import('../../../src/types/program').ProgramDayExecution[]>([]);
   const [suggestedAvailability, setSuggestedAvailability] = useState<SessionAvailabilityOption | undefined>();
   const [availabilityInsightText, setAvailabilityInsightText] = useState<string | null>(null);
@@ -49,10 +55,28 @@ export default function ProgramDayScreen() {
   const restStartedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
-    Promise.all([loadAssessmentResult(), loadProgramExecutions(), loadDailyAvailability()])
-      .then(([result, executions, availability]) => {
+    Promise.all([
+      loadAssessmentResult(),
+      loadProgramExecutions(),
+      loadDailyAvailability(),
+      refreshLongitudinalJourneyMemory(),
+      loadContinuousJourneyState(),
+    ])
+      .then(([result, executions, availability, journeyMemory, continuousState]) => {
         if (result) {
-          const baseProgram = generateCycle1Program(result.profile);
+          const resolvedContinuousState = requestedCycle >= 5
+            ? { ...continuousState, activeBlockIndex: requestedBlock }
+            : continuousState;
+          const baseProgram = generateProgramForCycle(
+            result.profile,
+            requestedCycle,
+            journeyMemory,
+            resolvedContinuousState,
+          );
+          if (!baseProgram) {
+            setProgram(null);
+            return;
+          }
           const adaptedProgram = adaptProgramForHistory(baseProgram, executions);
           const decisions = getAdaptationDecisionsForDay(baseProgram, requestedDay, executions);
           setProgram(adaptedProgram);
@@ -64,6 +88,7 @@ export default function ProgramDayScreen() {
           setSuggestedAvailability(availabilityInsight.suggestedOption);
           setAvailabilityInsightText(availabilityInsight.confidence === 'insuficiente' ? null : availabilityInsight.reason);
           setAvailabilityChosen(false);
+          setAutonomyChoices({});
           setSessionComposition(null);
           setAdaptationMessage(summarizeAdaptationForDay(baseProgram, requestedDay, executions));
           setAvatarVariant(result.profile.avatarVariant ?? 'neutro');
@@ -71,7 +96,7 @@ export default function ProgramDayScreen() {
         }
       })
       .finally(() => setLoading(false));
-  }, [requestedDay]);
+  }, [requestedDay, requestedCycle, requestedBlock]);
 
   const day = sessionDay ?? baseDay ?? program?.days.find((item) => item.day === requestedDay);
   const prescription = day?.exercises[exerciseIndex];
@@ -113,9 +138,17 @@ export default function ProgramDayScreen() {
   }
 
   if (!program || !day || !prescription || !exercise) {
+    const definition = cycleDefinition(requestedCycle);
     return (
       <View style={styles.center}>
-        <Text style={typography.h2}>Não foi possível carregar este dia.</Text>
+        <Text style={typography.h2}>
+          {definition.generatorReady ? 'Não foi possível carregar este dia.' : `${definition.name} ainda não está liberado para execução.`}
+        </Text>
+        {!definition.generatorReady ? (
+          <Text style={[typography.bodyMuted, { textAlign: 'center', marginTop: spacing.sm, lineHeight: 20 }]}>
+            A etapa já existe na Jornada Corpo Leve, mas terá um gerador próprio antes de ser disponibilizada. O Ciclo 1 não será simplesmente repetido.
+          </Text>
+        ) : null}
         <PrimaryButton label="Voltar" onPress={() => router.back()} style={{ marginTop: spacing.lg }} />
       </View>
     );
@@ -158,7 +191,11 @@ export default function ProgramDayScreen() {
   if (!availabilityChosen && baseDay) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.eyebrow}>CICLO 1 · DIA {requestedDay}/21</Text>
+        <Text style={styles.eyebrow}>
+          {program.continuous
+            ? `JORNADA CONTÍNUA · BLOCO ${program.continuous.blockIndex} · PRÁTICA ${requestedDay}/${program.durationDays}`
+            : `CICLO ${program.cycle} · ${cycleDefinition(program.cycle).name.toUpperCase()} · DIA ${requestedDay}/${program.durationDays}`}
+        </Text>
         <Text style={typography.h1}>Quanto tempo você tem hoje?</Text>
         <Text style={styles.availabilityIntro}>
           Escolha o tempo disponível. O Corpo Leve ajusta a sessão sem transformar pouco tempo em treino excessivamente intenso.
@@ -184,6 +221,31 @@ export default function ProgramDayScreen() {
         </Text>
       </ScrollView>
     );
+  }
+
+  function applyAutonomyChoice(slotId: string, defaultExerciseId: string, exerciseId: string) {
+    if (!sessionDay?.autonomy?.enabled) return;
+
+    setAutonomyChoices((current) => {
+      const alreadyChosen = !!current[slotId];
+      const currentCount = Object.keys(current).length;
+      if (!alreadyChosen && currentCount >= sessionDay.autonomy!.maxUserChoices) return current;
+
+      setSessionDay((dayState) => {
+        if (!dayState) return dayState;
+        const previousSelected = current[slotId] ?? defaultExerciseId;
+        return {
+          ...dayState,
+          exercises: dayState.exercises.map((item) =>
+            item.exerciseId === previousSelected
+              ? { ...item, exerciseId }
+              : item
+          ),
+        };
+      });
+
+      return { ...current, [slotId]: exerciseId };
+    });
   }
 
   function startSet() {
@@ -295,6 +357,11 @@ export default function ProgramDayScreen() {
       exercises: finalRecords,
       sessionComposition: sessionComposition ?? undefined,
     });
+
+    if (program.continuous && requestedDay >= program.durationDays) {
+      await completeContinuousJourneyBlock(program.continuous.blockIndex);
+    }
+
     setRecords(finalRecords);
     setMode('done');
   }
@@ -319,7 +386,26 @@ export default function ProgramDayScreen() {
           </Text>
           <PrimaryButton label="Abrir Modo Livre Assistido" variant="outline" onPress={() => router.push('/jornada/modo-livre')} style={{ marginTop: spacing.sm }} />
         </View>
-        {requestedDay < 21 && <PrimaryButton label={`Ver Dia ${requestedDay + 1}`} onPress={() => router.replace(`/programa/dia/${requestedDay + 1}`)} />}
+        {requestedDay < program.durationDays ? (
+          <PrimaryButton
+            label={program.continuous ? `Ver próxima prática` : `Ver Dia ${requestedDay + 1}`}
+            onPress={() => router.replace(
+              program.continuous
+                ? `/programa/dia/${requestedDay + 1}?cycle=5&block=${program.continuous.blockIndex}`
+                : `/programa/dia/${requestedDay + 1}?cycle=${program.cycle}`
+            )}
+          />
+        ) : program.continuous ? (
+          <PrimaryButton
+            label="Continuar minha jornada"
+            onPress={() => router.replace('/jornada/continua')}
+          />
+        ) : (
+          <PrimaryButton
+            label="Fechar este ciclo"
+            onPress={() => router.replace(`/jornada/ciclo-concluido?cycle=${program.cycle}`)}
+          />
+        )}
         <PrimaryButton label="Voltar ao início" variant="outline" onPress={() => router.replace('/(tabs)')} style={{ marginTop: spacing.sm }} />
       </ScrollView>
     );
@@ -327,7 +413,11 @@ export default function ProgramDayScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.eyebrow}>CICLO 1 · DIA {requestedDay}/21</Text>
+      <Text style={styles.eyebrow}>
+          {program.continuous
+            ? `JORNADA CONTÍNUA · BLOCO ${program.continuous.blockIndex} · PRÁTICA ${requestedDay}/${program.durationDays}`
+            : `CICLO ${program.cycle} · ${cycleDefinition(program.cycle).name.toUpperCase()} · DIA ${requestedDay}/${program.durationDays}`}
+        </Text>
       <Text style={typography.h1}>{day.title}</Text>
       <Text style={styles.subtitle}>{day.focus} · ≈ {day.estimatedMinutes} min</Text>
       {sessionComposition?.adapted ? (
@@ -347,6 +437,48 @@ export default function ProgramDayScreen() {
           <Text style={styles.adaptationText}>{adaptationMessage}</Text>
         </View>
       ) : null}
+      {day.autonomy?.enabled && day.autonomy.options.length ? (
+        <View style={[styles.autonomyCard, shadow.card]}>
+          <Text style={styles.adaptationEyebrow}>AUTONOMIA NA SESSÃO</Text>
+          <Text style={styles.autonomyTitle}>Você pode ajustar algumas escolhas de hoje</Text>
+          <Text style={styles.autonomyText}>{day.autonomy.message}</Text>
+          <Text style={styles.autonomyLimit}>
+            Até {day.autonomy.maxUserChoices} escolha{day.autonomy.maxUserChoices > 1 ? 's' : ''} nesta sessão.
+          </Text>
+
+          {day.autonomy.options.map((option) => (
+            <View key={option.slotId} style={styles.autonomyOption}>
+              <Text style={styles.autonomyFamily}>{option.family}</Text>
+              <Text style={styles.autonomyReason}>{option.reason}</Text>
+              <View style={styles.autonomyChoicesRow}>
+                {[option.defaultExerciseId, ...option.alternativeExerciseIds].map((exerciseId) => {
+                  const definition = exerciseById[exerciseId];
+                  const selected = (autonomyChoices[option.slotId] ?? option.defaultExerciseId) === exerciseId;
+                  return (
+                    <Pressable
+                      key={exerciseId}
+                      onPress={() => applyAutonomyChoice(option.slotId, option.defaultExerciseId, exerciseId)}
+                      style={({ pressed }) => [
+                        styles.autonomyChoice,
+                        selected && styles.autonomyChoiceSelected,
+                        pressed && { opacity: 0.75 },
+                      ]}
+                    >
+                      <Text style={[styles.autonomyChoiceText, selected && styles.autonomyChoiceTextSelected]}>
+                        {definition?.name ?? exerciseId}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <Text style={styles.autonomyFootnote}>
+            Trocar uma variação não aumenta séries ou duração. O Corpo Leve mantém o restante da prescrição.
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress * 100}%` }]} /></View>
 
       <View style={[styles.exerciseCard, shadow.card]}>
@@ -496,6 +628,19 @@ const styles = StyleSheet.create({
   feedbackArea: { paddingTop: spacing.lg },
   effortButton: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.sm, backgroundColor: colors.surfaceAlt },
   effortText: { ...typography.body, textAlign: 'center', fontWeight: '600' },
+  autonomyCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
+  autonomyTitle: { ...typography.h3, marginTop: spacing.xs },
+  autonomyText: { ...typography.bodyMuted, color: colors.text, lineHeight: 20, marginTop: spacing.xs },
+  autonomyLimit: { ...typography.caption, color: colors.primaryDark, fontWeight: '800', marginTop: spacing.sm },
+  autonomyOption: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md },
+  autonomyFamily: { ...typography.body, color: colors.text, fontWeight: '800' },
+  autonomyReason: { ...typography.caption, color: colors.textMuted, lineHeight: 18, marginTop: 3 },
+  autonomyChoicesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
+  autonomyChoice: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 8, backgroundColor: colors.surfaceAlt },
+  autonomyChoiceSelected: { borderColor: colors.primaryDark, backgroundColor: colors.primaryLight },
+  autonomyChoiceText: { ...typography.caption, color: colors.text },
+  autonomyChoiceTextSelected: { color: colors.primaryDark, fontWeight: '800' },
+  autonomyFootnote: { ...typography.caption, color: colors.textMuted, lineHeight: 18, marginTop: spacing.md },
   footerNote: { ...typography.caption, lineHeight: 18, textAlign: 'center', marginTop: spacing.lg },
   doneCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.lg },
   freeAfterDoneCard: { backgroundColor: colors.primaryLight, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.lg },

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { colors, radius, shadow, spacing, typography } from '../../src/constants/theme';
 import { exerciseById } from '../../src/data/exercises/calisthenics';
-import { generateCycle1Program } from '../../src/services/program/cycle1Engine';
+import { generateProgramForCycle } from '../../src/services/program/programResolver';
 import { loadAssessmentResult } from '../../src/services/storage/assessmentStorage';
 import { loadProgramExecutions } from '../../src/services/workout/executionStorage';
 import { loadAdaptationDecisions } from '../../src/services/journey/adaptationStorage';
@@ -12,7 +12,10 @@ import { loadDailyAvailability } from '../../src/services/journey/availabilitySt
 import { loadComplementaryActivities } from '../../src/services/journey/complementaryActivityStorage';
 import { loadFreeSessions } from '../../src/services/journey/freeSessionStorage';
 import { buildCycleJourneySummary, cycleFeedback } from '../../src/services/journey/journeyEngine';
-import { CycleJourneySummary, ExerciseFamilyJourney } from '../../src/types/program';
+import { buildJourneyProgramState } from '../../src/services/program/journeyProgramEngine';
+import { buildLongitudinalJourneyMemory } from '../../src/services/journey/longitudinalJourneyMemoryEngine';
+import { loadContinuousJourneyState } from '../../src/services/journey/continuousJourneyStorage';
+import { CycleJourneySummary, ExerciseFamilyJourney, JourneyProgramState, LongitudinalJourneyMemory } from '../../src/types/program';
 
 const FAMILY_LABELS: Record<string, string> = {
   pushup: 'Empurrar',
@@ -49,6 +52,8 @@ function familyLabel(group: string) {
 
 export default function JourneyScreen() {
   const [summary, setSummary] = useState<CycleJourneySummary | null>(null);
+  const [journeyProgram, setJourneyProgram] = useState<JourneyProgramState | null>(null);
+  const [journeyMemory, setJourneyMemory] = useState<LongitudinalJourneyMemory | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,11 +64,34 @@ export default function JourneyScreen() {
       loadDailyAvailability(),
       loadComplementaryActivities(),
       loadFreeSessions(),
+      loadContinuousJourneyState(),
     ])
-      .then(([assessment, executions, decisions, availability, complementaryActivities, freeSessions]) => {
+      .then(([assessment, executions, decisions, availability, complementaryActivities, freeSessions, continuousState]) => {
         if (!assessment) return;
-        const program = generateCycle1Program(assessment.profile);
-        setSummary(buildCycleJourneySummary(program, executions, decisions, availability, complementaryActivities, freeSessions));
+        const state = buildJourneyProgramState(executions);
+        const memory = buildLongitudinalJourneyMemory(
+          executions,
+          decisions,
+          availability,
+          complementaryActivities,
+          freeSessions,
+        );
+        const program =
+          generateProgramForCycle(assessment.profile, state.currentCycle, memory, continuousState) ??
+          generateProgramForCycle(assessment.profile, 1, memory, continuousState);
+
+        setJourneyProgram(state);
+        setJourneyMemory(memory);
+        if (program) {
+          setSummary(buildCycleJourneySummary(
+            program,
+            executions,
+            decisions,
+            availability,
+            complementaryActivities,
+            freeSessions,
+          ));
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -96,7 +124,7 @@ export default function JourneyScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.eyebrow}>MINHA JORNADA</Text>
-      <Text style={typography.h1}>Ciclo {summary.cycle}</Text>
+      <Text style={typography.h1}>{summary.cycle >= 5 ? 'Jornada Contínua' : `Ciclo ${summary.cycle}`}</Text>
       <Text style={styles.subtitle}>
         Seu progresso é comparado com o seu próprio histórico de treinos.
       </Text>
@@ -116,6 +144,58 @@ export default function JourneyScreen() {
         </View>
         <Text style={styles.heroHint}>Consistência é registrada sessão por sessão.</Text>
       </View>
+
+      {journeyProgram ? (
+        <View style={[styles.journeyRoadmap, shadow.card]}>
+          <Text style={styles.cardEyebrow}>JORNADA CORPO LEVE</Text>
+          <Text style={styles.roadmapTitle}>Do fundamento à autonomia</Text>
+          <View style={styles.roadmapRow}>
+            {journeyProgram.cycles.map((item) => (
+              <View key={item.definition.key} style={styles.roadmapItem}>
+                <View style={[
+                  styles.roadmapDot,
+                  item.completed && styles.roadmapDotCompleted,
+                  item.current && styles.roadmapDotCurrent,
+                ]} />
+                <Text style={[styles.roadmapLabel, item.current && styles.roadmapLabelCurrent]}>
+                  {item.definition.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.roadmapHint}>
+            {journeyProgram.message}
+          </Text>
+        </View>
+      ) : null}
+
+      {journeyMemory ? (
+        <View style={[styles.memoryCard, shadow.card]}>
+          <View style={styles.memoryHeader}>
+            <Ionicons name="layers-outline" size={20} color={colors.primaryDark} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardEyebrow}>MEMÓRIA DA JORNADA</Text>
+              <Text style={styles.memoryTitle}>Seu histórico atravessa os ciclos</Text>
+            </View>
+          </View>
+          <Text style={styles.memoryText}>
+            O próximo ciclo parte das referências que você já construiu; ele não reinicia sua jornada.
+          </Text>
+          <View style={styles.memoryStats}>
+            <SmallStat label="Sessões acumuladas" value={`${journeyMemory.totalCompletedSessions}`} />
+            <SmallStat label="Famílias conhecidas" value={`${journeyMemory.families.length}`} />
+            <SmallStat label="Modo Livre" value={`${journeyMemory.movement.freeAssistedSessions}`} />
+          </View>
+          {journeyMemory.availability.preferredWindowMinutes ? (
+            <Text style={styles.memoryInsight}>
+              Janela mais frequente no histórico: {journeyMemory.availability.preferredWindowMinutes} min.
+            </Text>
+          ) : null}
+          {journeyMemory.behaviorSignals.slice(0, 3).map((signal) => (
+            <Text key={signal} style={styles.memorySignal}>• {signal}</Text>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.metricGrid}>
         <Metric icon="time-outline" label="Tempo ativo" value={formatMinutes(summary.activeSeconds)} />
@@ -355,6 +435,23 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
   heroHint: { ...typography.caption, marginTop: spacing.sm },
 
+  journeyRoadmap: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
+  roadmapTitle: { ...typography.h3, marginTop: spacing.xs },
+  roadmapRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  roadmapItem: { flex: 1, alignItems: 'center' },
+  roadmapDot: { width: 12, height: 12, borderRadius: radius.full, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+  roadmapDotCompleted: { backgroundColor: colors.primary },
+  roadmapDotCurrent: { backgroundColor: colors.primaryDark, borderColor: colors.primaryDark },
+  roadmapLabel: { ...typography.caption, textAlign: 'center', marginTop: 5 },
+  roadmapLabelCurrent: { color: colors.primaryDark, fontWeight: '900' },
+  roadmapHint: { ...typography.bodyMuted, color: colors.text, lineHeight: 20, marginTop: spacing.md },
+  memoryCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
+  memoryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  memoryTitle: { ...typography.h3, marginTop: 2 },
+  memoryText: { ...typography.bodyMuted, color: colors.text, lineHeight: 20, marginTop: spacing.sm },
+  memoryStats: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  memoryInsight: { ...typography.bodyMuted, color: colors.primaryDark, fontWeight: '800', marginTop: spacing.md },
+  memorySignal: { ...typography.caption, color: colors.text, lineHeight: 18, marginTop: 3 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   metricCard: { width: '48%', flexGrow: 1, minWidth: 140, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md },
   metricValue: { ...typography.h3, marginTop: spacing.sm },

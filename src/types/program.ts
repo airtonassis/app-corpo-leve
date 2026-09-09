@@ -1,6 +1,150 @@
 import { AvatarVariant, ObjetivoPrincipal, NivelCalculado } from './assessment';
 export type { AvatarVariant } from './assessment';
 
+
+export type JourneyCycleKey =
+  | 'fundamentos'
+  | 'consistencia'
+  | 'evolucao'
+  | 'autonomia'
+  | 'continua';
+
+export type JourneyCycleAvailability =
+  | 'disponivel'
+  | 'proximo'
+  | 'planejado'
+  | 'continuo';
+
+export interface JourneyCycleDefinition {
+  cycle: number;
+  key: JourneyCycleKey;
+  name: string;
+  durationDays?: number;
+  purpose: string;
+  userMessage: string;
+  availability: JourneyCycleAvailability;
+  generatorReady: boolean;
+}
+
+export interface JourneyCycleProgress {
+  definition: JourneyCycleDefinition;
+  completedDays: number;
+  completionRate: number;
+  completed: boolean;
+  unlocked: boolean;
+  current: boolean;
+}
+
+export interface JourneyProgramState {
+  currentCycle: number;
+  currentCycleKey: JourneyCycleKey;
+  cycles: JourneyCycleProgress[];
+  totalCompletedProgramDays: number;
+  nextCycle?: JourneyCycleDefinition;
+  message: string;
+}
+
+
+export interface JourneyMemoryFamily {
+  progressionGroup: string;
+  firstExerciseId?: string;
+  currentExerciseId?: string;
+  highestExerciseId?: string;
+  exerciseHistory: string[];
+  cyclesSeen: number[];
+  sessions: number;
+  completedSets: number;
+  activeSeconds: number;
+  effortCounts: Record<EffortFeedback, number>;
+  recentEfforts: EffortFeedback[];
+  progressionCount: number;
+  regressionCount: number;
+  lastPerformedAt?: string;
+}
+
+export interface JourneyAvailabilityMemory {
+  recordedChoices: number;
+  shortSessions: number;
+  fullSessions: number;
+  unavailableRecords: number;
+  averageAvailableMinutes?: number;
+  preferredWindowMinutes?: number;
+  recentAvailableMinutes: number[];
+}
+
+export interface JourneyMovementMemory {
+  complementaryActivities: number;
+  complementaryMinutes: number;
+  activityTypes: Partial<Record<ComplementaryActivityType, number>>;
+  freeAssistedSessions: number;
+  freeAssistedMinutes: number;
+  freeIntents: Partial<Record<FreeSessionIntent, number>>;
+}
+
+export interface JourneyCycleMemory {
+  cycle: number;
+  programIds: string[];
+  completedDays: number;
+  completedSessions: number;
+  activeSeconds: number;
+  startedAt?: string;
+  lastActivityAt?: string;
+}
+
+export interface LongitudinalJourneyMemory {
+  version: 1;
+  generatedAt: string;
+  totalCompletedSessions: number;
+  totalActiveSeconds: number;
+  totalRestSeconds: number;
+  totalAdaptationDecisions: number;
+  families: JourneyMemoryFamily[];
+  availability: JourneyAvailabilityMemory;
+  movement: JourneyMovementMemory;
+  cycles: JourneyCycleMemory[];
+  behaviorSignals: string[];
+}
+
+export interface CycleTransitionContext {
+  fromCycle: number;
+  toCycle: number;
+  generatedAt: string;
+  inheritedSignals: string[];
+  familyPriorities: {
+    progressionGroup: string;
+    recommendation: 'preservar_referencia' | 'observar' | 'priorizar_exposicao';
+    reason: string;
+  }[];
+  preferredSessionMinutes?: number;
+  guidance: string[];
+}
+
+
+export type ContinuousJourneyFocus =
+  | 'manter'
+  | 'forca'
+  | 'condicionamento'
+  | 'mobilidade'
+  | 'consistencia'
+  | 'bem_estar';
+
+export interface ContinuousJourneyState {
+  version: 1;
+  activeBlockIndex: number;
+  completedBlocks: number;
+  focus: ContinuousJourneyFocus;
+  startedAt: string;
+  updatedAt: string;
+}
+
+export interface ContinuousJourneyBlockMeta {
+  blockIndex: number;
+  sessionCount: number;
+  focus: ContinuousJourneyFocus;
+  renewable: true;
+  message: string;
+}
+
 export type ExerciseCategory = 'aquecimento' | 'empurrar' | 'pernas' | 'puxar' | 'core' | 'mobilidade' | 'condicionamento';
 export type ExerciseEquipment = 'nenhum' | 'parede' | 'cadeira' | 'banco' | 'barra' | 'elastico' | 'colchonete' | 'degrau';
 export type ProgramDayKind = 'treino' | 'recuperacao' | 'checkin';
@@ -63,6 +207,23 @@ export interface ExercisePrescription {
   note?: string;
 }
 
+
+export interface PlannedAutonomyOption {
+  slotId: string;
+  family: string;
+  defaultExerciseId: string;
+  alternativeExerciseIds: string[];
+  reason: string;
+}
+
+export interface PlannedAutonomyMeta {
+  enabled: boolean;
+  guidance: 'moderada' | 'leve';
+  maxUserChoices: number;
+  options: PlannedAutonomyOption[];
+  message: string;
+}
+
 export interface ProgramDay {
   day: number;
   kind: ProgramDayKind;
@@ -71,6 +232,7 @@ export interface ProgramDay {
   estimatedMinutes: number;
   exercises: ExercisePrescription[];
   disciplineMessage: string;
+  autonomy?: PlannedAutonomyMeta;
 }
 
 export interface ProgramEligibility {
@@ -91,6 +253,7 @@ export interface ProgramDefinition {
   days: ProgramDay[];
   generatedAt: string;
   eligibility?: ProgramEligibility;
+  continuous?: ContinuousJourneyBlockMeta;
 }
 
 export interface SetExecutionRecord {

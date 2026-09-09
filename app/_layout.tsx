@@ -24,7 +24,8 @@ export default function RootLayout() {
           <Stack.Screen name="treino/[id]" options={{ title: 'Treino', presentation: 'card' }} />
           <Stack.Screen name="perfil/quiz" options={{ title: 'Seu Perfil' }} />
           <Stack.Screen name="perfil/resultado" options={{ title: 'Resultado da Avaliação' }} />
-          <Stack.Screen name="programa/dia/[day]" options={{ title: 'Ciclo 1' }} />
+          <Stack.Screen name="programa/dia/[day]" options={{ title: 'Jornada Corpo Leve' }} />
+          <Stack.Screen name="jornada/continua" options={{ title: 'Jornada Contínua' }} />
         </Stack>
       </AppProvider>
     </SafeAreaProvider>

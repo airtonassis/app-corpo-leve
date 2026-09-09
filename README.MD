@@ -312,3 +312,192 @@ A autonomia cresce pela quantidade de decisões que o usuário pode tomar, não 
 - o limite indicado é teto de referência, não meta a ser alcançada.
 
 O storage do Modo Livre mantém compatibilidade de leitura com registros criados antes da política progressiva.
+
+
+## Arquitetura genérica de ciclos
+
+A Jornada Corpo Leve agora possui um catálogo formal de ciclos separado dos geradores de treino:
+
+- Ciclo 1 — Fundamentos — 21 dias — gerador disponível.
+- Ciclo 2 — Consistência — 42 dias — definido na jornada, gerador específico ainda não implementado.
+- Ciclo 3 — Evolução — 63 dias — definido na jornada, gerador específico ainda não implementado.
+- Ciclo 4 — Autonomia — 84 dias — definido na jornada, gerador específico ainda não implementado.
+- Jornada Contínua — sem prazo fixo.
+
+`cycleCatalog.ts` descreve a experiência de cada etapa.
+`journeyProgramEngine.ts` calcula ciclo atual, desbloqueios, conclusão e histórico entre ciclos.
+`programResolver.ts` resolve o gerador disponível para cada ciclo.
+
+Regra de arquitetura: ciclos futuros não reutilizam o Ciclo 1 apenas aumentando duração ou volume. Cada etapa deve receber seu próprio motor adaptativo antes de ser liberada.
+
+A Home antiga baseada em "Desafio 21 Dias" foi substituída por uma visão da Jornada Corpo Leve. O texto não afirma formação de hábito por prazo fixo.
+
+A tela de execução agora aceita `cycle` como parâmetro, usa o `program.durationDays` em vez de números fixos e direciona o último dia para uma tela genérica de fechamento de ciclo.
+
+O fechamento segue:
+Conquista → Reflexão → Reconhecimento da jornada → Próxima etapa.
+
+O Modo Livre Assistido também consulta o estado genérico da jornada e herdará automaticamente a política do ciclo ativo quando os próximos geradores forem liberados.
+
+
+## Journey Memory longitudinal
+
+A memória da jornada agora existe acima dos ciclos e é reconstruída a partir dos registros brutos do usuário.
+
+Fontes herdadas:
+- execuções planejadas de todos os ciclos;
+- histórico de exercícios, famílias, séries, tempo ativo e feedbacks;
+- decisões de adaptação/progressão/regressão;
+- disponibilidade escolhida e sessões adaptadas ao tempo;
+- dias registrados sem disponibilidade;
+- atividades complementares;
+- sessões do Modo Livre Assistido;
+- histórico por ciclo.
+
+`longitudinalJourneyMemoryEngine.ts` produz `LongitudinalJourneyMemory`.
+`journeyMemoryStorage.ts` reconstrói a memória a partir das fontes de verdade e mantém um snapshot derivado em `@corpo-leve/journey-memory-snapshot-v1`.
+
+O snapshot não substitui os registros originais. Se houver divergência, a memória é reconstruída a partir dos dados brutos.
+
+### Transição entre ciclos
+
+`buildCycleTransitionContext()` transforma a memória longitudinal em contexto para o próximo ciclo:
+- referências funcionais que devem ser preservadas;
+- famílias que pedem observação;
+- famílias com menor exposição histórica;
+- janela de tempo mais frequente;
+- sinais de Modo Livre e atividades complementares;
+- regras que impedem confundir indisponibilidade com perda de capacidade.
+
+O `programResolver` agora aceita `LongitudinalJourneyMemory` em seu contrato. O Ciclo 1 ainda ignora esse contexto, mas qualquer gerador futuro de Ciclo 2+ deve recebê-lo e interpretá-lo.
+
+A Home, a tela de execução e o Modo Livre já passam a memória ao resolver. A tela de fechamento do ciclo mostra explicitamente o histórico herdado e os principais motivos que poderão orientar a próxima etapa.
+
+Regra: ciclo novo é capítulo novo da mesma jornada, nunca um perfil zerado.
+
+
+## Cycle 2 Engine — Consistência
+
+O Ciclo 2 agora possui gerador próprio e usa `LongitudinalJourneyMemory` como entrada obrigatória.
+
+Princípios implementados:
+- duração estrutural de 42 dias;
+- não reinicia referências funcionais do usuário;
+- preserva a última variação conhecida quando ela continua compatível com nível, recursos e pontos de atenção;
+- não progride automaticamente só porque o Ciclo 1 terminou;
+- famílias com histórico mais difícil entram em modo de observação;
+- famílias pouco expostas podem ganhar prioridade de presença sem aumentar volume total;
+- a janela de tempo mais frequente da Journey Memory orienta `estimatedMinutes`, mas não vira meta;
+- recuperação aparece de forma recorrente e nunca é usada para compensar sessões perdidas;
+- atividades complementares e Modo Livre continuam sem substituir a atividade planejada;
+- feedback e histórico funcional continuam sendo a base para adaptações posteriores.
+
+Estrutura do Ciclo 2:
+- Dias 1–14: preservar referências e estabilizar rotina;
+- Dias 15–28: equilibrar famílias e manter continuidade;
+- Dias 29–42: consolidar escolhas e preparar mais autonomia;
+- marcos nos dias 7, 14, 21, 28, 35 e 42;
+- dias de recuperação ativa distribuídos ao longo da etapa.
+
+O `programResolver` agora resolve o Ciclo 2 quando existe Journey Memory.
+O `cycleCatalog` marca Consistência como gerador disponível.
+Home e Minha Jornada reconhecem o Ciclo 2 como etapa executável depois da conclusão do Ciclo 1.
+
+
+## Cycle 3 Engine — Evolução
+
+O Ciclo 3 agora possui gerador próprio e recebe a `LongitudinalJourneyMemory` como entrada obrigatória.
+
+Princípios implementados:
+- duração estrutural de 63 dias;
+- não aumenta duração ou volume automaticamente por mudança de ciclo;
+- preserva referências funcionais herdadas no primeiro terço;
+- famílias com histórico recente `difícil`/`interrompido` permanecem em observação;
+- famílias com histórico recente estável podem receber, a partir da fase 2, a próxima variação compatível como opção inicial;
+- progressão de variação não aumenta automaticamente sets ou duração;
+- equipamento, nível e regiões/pontos de atenção continuam sendo filtros obrigatórios;
+- famílias pouco expostas podem ganhar prioridade de presença, não volume;
+- a janela recente de tempo orienta a sessão, limitada a 8–20 min como referência;
+- autonomia entra como contexto de jornada, sem transformar Modo Livre ou atividades complementares em crédito de progressão;
+- atividades complementares continuam sem substituir a atividade planejada.
+
+Estrutura:
+- Dias 1–21: preservar referências e confirmar estabilidade;
+- Dias 22–42: explorar evolução compatível com feedback e histórico;
+- Dias 43–63: consolidar decisões e preparar autonomia;
+- marcos nos dias 7, 14, 21, 28, 35, 42, 49, 56 e 63;
+- recuperação ativa distribuída ao longo do ciclo.
+
+O `programResolver` agora resolve o Ciclo 3 quando existe Journey Memory.
+O `cycleCatalog` marca Evolução como gerador disponível.
+A política do Modo Livre para o Ciclo 3 já existente passa a ser usada quando esse ciclo estiver ativo.
+
+
+## Cycle 4 Engine — Autonomia
+
+O Ciclo 4 agora possui gerador próprio e recebe `LongitudinalJourneyMemory` como entrada obrigatória.
+
+Princípios:
+- 84 dias de estrutura de jornada, sem alegação de prazo biológico para formação de hábito;
+- autonomia cresce pela capacidade de decidir, não por aumento automático de volume;
+- o usuário pode trocar determinadas variações dentro da própria sessão planejada;
+- cada escolha é limitada a exercícios compatíveis com nível, equipamento, regiões/pontos de atenção e histórico;
+- famílias com sinal de observação não recebem alternativas livres de progressão;
+- uma família estável pode oferecer a referência atual, uma regressão compatível e, quando apropriado, uma próxima variação;
+- trocar exercício não altera automaticamente séries, duração ou descanso;
+- disponibilidade real continua orientando duração de referência;
+- atividades complementares e Modo Livre não substituem a atividade principal;
+- recuperação permanece uma escolha válida de autonomia.
+
+Estrutura:
+- Dias 1–28: até 1 escolha autônoma por sessão;
+- Dias 29–56: até 2 escolhas;
+- Dias 57–84: até 3 escolhas;
+- escolhas são apenas dentro de slots validados pelo motor;
+- marcos semanais avaliam coerência das decisões e continuidade.
+
+A tela de treino agora mostra um cartão `AUTONOMIA NA SESSÃO` quando o dia oferece alternativas seguras.
+
+
+## Jornada Contínua
+
+A Jornada Contínua agora possui motor e estado próprios. Ela não é um Ciclo 5 com prazo final.
+
+### Blocos renováveis de registro
+- Cada bloco possui 14 práticas apenas como unidade técnica de persistência.
+- Os 14 registros não são um desafio, meta biológica ou prazo para formar hábito.
+- Ao concluir a última prática, o estado avança para um novo bloco.
+- Cada bloco recebe `programId` próprio (`cycle-5-continuous-bN-...`), impedindo sobrescrita de sessões anteriores.
+- A contagem longitudinal usa `programId + day`, portanto práticas de blocos diferentes permanecem distintas.
+
+### Foco contínuo
+O usuário pode escolher:
+- manter a prática atual;
+- força;
+- condicionamento;
+- mobilidade;
+- bem-estar.
+
+Alterar o foco abre um novo bloco técnico para preservar imutabilidade do histórico anterior. A Journey Memory não é apagada e continua fornecendo referências funcionais, disponibilidade, feedbacks e sinais de autonomia.
+
+### Motor
+`continuousJourneyEngine.ts`:
+- usa a última referência funcional compatível por família;
+- mantém filtros de nível, equipamento e pontos/regiões de atenção;
+- permite escolhas autônomas leves dentro de variações compatíveis;
+- não aumenta automaticamente séries, duração ou intensidade;
+- usa disponibilidade recente como referência de tempo;
+- inclui recuperação ativa sem compensação;
+- mantém atividades complementares e Modo Livre fora do crédito de progressão planejada.
+
+### Interface
+`app/jornada/continua.tsx` é o hub da etapa contínua:
+- mostra o bloco técnico atual;
+- permite redefinir foco;
+- mostra indicadores da Journey Memory;
+- inicia a próxima prática;
+- explica explicitamente que os blocos não definem prazo final.
+
+A Home abre o hub quando a Jornada Contínua é a etapa atual.
+A tela de treino preserva o número do bloco nas rotas e cria o próximo bloco ao concluir a última prática.
+Minha Jornada e Modo Livre também resolvem o programa contínuo ativo.
