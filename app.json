@@ -2,18 +2,18 @@
   "expo": {
     "name": "Corpo Leve",
     "slug": "app-corpo-leve",
-    "scheme": "corpolleve",
+    "scheme": "forcaleve",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
 
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.araservices.corpolleve"
+      "bundleIdentifier": "com.forcaleve.app"
     },
 
     "android": {
-      "package": "com.araservices.corpolleve"
+      "package": "com.forcaleve.app"
     },
 
     "plugins": [
@@ -21,9 +21,6 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
-          "imageWidth": 180,
-          "resizeMode": "contain",
           "backgroundColor": "#FAF7F2"
         }
       ],
@@ -33,15 +30,6 @@
           "color": "#8A9A5B"
         }
       ]
-    ],
-
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "a4cdaded-abd3-4814-b464-69f291a7efe9"
-      }
-    },
-
-    "owner": "araservices-team"
+    ]
   }
 }

@@ -4,6 +4,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { PrimaryButton } from '../../../src/components/PrimaryButton';
 import { AvatarMovementGuide } from '../../../src/components/AvatarMovementGuide';
 import { ExerciseInstructionPanel } from '../../../src/components/ExerciseInstructionPanel';
+import { ExerciseVisualDemo } from '../../../src/components/ExerciseVisualDemo';
+import { SessionPhasePanel } from '../../../src/components/SessionPhasePanel';
 import { colors, radius, shadow, spacing, typography } from '../../../src/constants/theme';
 import { exerciseById } from '../../../src/data/exercises/calisthenics';
 import { generateProgramForCycle } from '../../../src/services/program/programResolver';
@@ -17,9 +19,11 @@ import { buildAvailabilityInsight } from '../../../src/services/journey/availabi
 import { refreshLongitudinalJourneyMemory } from '../../../src/services/journey/journeyMemoryStorage';
 import { completeContinuousJourneyBlock, loadContinuousJourneyState } from '../../../src/services/journey/continuousJourneyStorage';
 import { composeSessionForAvailability } from '../../../src/services/program/sessionComposerEngine';
+import { buildCooldownPlan, buildSessionPreparation } from '../../../src/services/workout/sessionPreparationEngine';
 import { AvatarVariant, EffortFeedback, ExerciseExecutionRecord, ProgramDefinition, ProgramDay, SessionAvailabilityOption, SessionCompositionMeta, SetExecutionRecord } from '../../../src/types/program';
 
  type Mode = 'idle' | 'active' | 'rest' | 'feedback' | 'done';
+ type SessionStage = 'preparation' | 'training' | 'cooldown';
 
 function formatSeconds(total: number): string {
   const safe = Math.max(0, Math.floor(total));
@@ -48,6 +52,7 @@ export default function ProgramDayScreen() {
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [setNumber, setSetNumber] = useState(1);
   const [mode, setMode] = useState<Mode>('idle');
+  const [sessionStage, setSessionStage] = useState<SessionStage>('preparation');
   const [elapsed, setElapsed] = useState(0);
   const [restRemaining, setRestRemaining] = useState(0);
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
@@ -164,6 +169,7 @@ export default function ProgramDayScreen() {
     setSetNumber(1);
     setRecords([]);
     setAvailabilityChosen(true);
+    setSessionStage('preparation');
     void upsertDailyAvailability({
       id: `${program.id}:${requestedDay}`,
       programId: program.id,
@@ -327,7 +333,7 @@ export default function ProgramDayScreen() {
 
     const isLast = exerciseIndex >= day.exercises.length - 1;
     if (isLast) {
-      finishDay(updatedRecords);
+      setSessionStage('cooldown');
       return;
     }
 
@@ -365,6 +371,25 @@ export default function ProgramDayScreen() {
 
     setRecords(finalRecords);
     setMode('done');
+  }
+
+  const preparationPlan = buildSessionPreparation(day, sessionComposition?.availability ?? 'completo');
+  const cooldownPlan = buildCooldownPlan();
+
+  if (availabilityChosen && sessionStage === 'preparation') {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SessionPhasePanel step="01" plan={preparationPlan} buttonLabel="Começar treino" onContinue={() => setSessionStage('training')} />
+      </ScrollView>
+    );
+  }
+
+  if (availabilityChosen && sessionStage === 'cooldown' && mode !== 'done') {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SessionPhasePanel step="03" plan={cooldownPlan} buttonLabel="Ir para conclusão" onContinue={() => void finishDay(records)} />
+      </ScrollView>
+    );
   }
 
   if (mode === 'done') {
@@ -489,6 +514,7 @@ export default function ProgramDayScreen() {
           Série {setNumber} de {prescription.sets} · {prescription.reps ? `${prescription.reps} repetições` : `${prescription.seconds ?? 0}s`}
         </Text>
 
+        {mode === 'idle' ? <ExerciseVisualDemo exercise={exercise} variant={avatarVariant} /> : null}
         {mode === 'idle' ? <ExerciseInstructionPanel exercise={exercise} /> : null}
 
         <AvatarMovementGuide

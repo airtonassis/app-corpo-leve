@@ -507,3 +507,16 @@ Minha Jornada e Modo Livre também resolvem o programa contínuo ativo.
 Esta versão adiciona instruções estruturadas para os 49 exercícios do catálogo: posição inicial, apoio, preparação, execução, retorno, respiração, pontos de atenção e checagem do ambiente. O avatar agora só é exibido como demonstração quando o movimento está explicitamente mapeado; demonstrações genéricas ou incompatíveis são ocultadas e sinalizadas como em revisão. Todos os exercícios permanecem com `professionalReview.status = pending` até revisão formal por Profissional de Educação Física.
 
 Documento de apoio: `docs/technical/EXERCISE_CATALOG_REVIEW.md`.
+
+## Visual Training V1 (piloto)
+
+Esta versão adiciona o fluxo de sessão **Preparação → Treino → Retorno à calma → conclusão/feedback**, mantendo o conteúdo metodológico como desenvolvimento pendente de validação profissional.
+
+- `SessionPreparationEngine`: preparação contextual por famílias de movimento e duração escolhida (8/12/20/completo).
+- `SessionPhasePanel`: telas de Preparação e Retorno à calma.
+- `ExerciseVisualDemo`: sequência visual piloto por fases usando o personagem do perfil.
+- Pilotos visuais: Agachamento livre (`squat-body`), Flexão inclinada (`push-incline`) e Prancha de antebraços (`plank-forearm`).
+- A variação visual masculino/feminino não altera dificuldade, volume ou progressão.
+- Nenhum conteúdo é exibido como profissionalmente aprovado; o status permanece `pending` / “Conteúdo em validação técnica”.
+
+> Observação: nesta V1 de teste, a sequência visual utiliza o avatar articulado existente em quadros por fase. A arquitetura já separa o catálogo visual para permitir substituir cada quadro por imagens estáticas específicas após validação do padrão visual e técnico.
