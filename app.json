@@ -6,30 +6,36 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.forcaleve.app"
     },
-
     "android": {
       "package": "com.forcaleve.app"
     },
-
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#FAF7F2"
-        }
-      ],
+	    [
+	  "expo-splash-screen",
+	  {
+	    "image": "./assets/splash-icon.png",
+	    "imageWidth": 180,
+	    "resizeMode": "contain",
+	    "backgroundColor": "#FAF7F2"
+	  }
+	],
       [
         "expo-notifications",
         {
           "color": "#8A9A5B"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c092e037-c9b5-40af-a942-246b5637d412"
+      }
+    }
   }
 }
