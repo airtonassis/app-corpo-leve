@@ -9,12 +9,12 @@ type Props = { exercise: ExerciseDefinition; variant: AvatarVariant };
 
 export function ExerciseVisualDemo({ exercise, variant }: Props) {
   const demo = exerciseVisualDemoCatalog[exercise.id];
-  if (!demo) return null;
+  if (!demo || exercise.visualGuide?.status !== 'mapped') return null;
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>DEMONSTRAÇÃO VISUAL · PILOTO</Text>
-        <Text style={styles.badge}>Conteúdo em validação técnica</Text>
+        <Text style={styles.badge}>Rascunho · validação profissional pendente</Text>
       </View>
       <Text style={styles.hint}>Observe a sequência antes de iniciar. A variação do personagem é visual e não altera a prescrição.</Text>
       <View style={styles.frames}>

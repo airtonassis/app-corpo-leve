@@ -10,7 +10,7 @@ export function QuizProgress({ current, estimatedTotal }: { current: number; est
     <View style={styles.wrapper}>
       <View style={styles.row}>
         <Text style={styles.label}>Avaliação adaptativa</Text>
-        <Text style={styles.counter}>{current} de ~{safeTotal}</Text>
+        <Text style={styles.counter}>{current} de até {safeTotal}</Text>
       </View>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${Math.max(progress * 100, 4)}%` }]} />

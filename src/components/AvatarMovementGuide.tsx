@@ -4,6 +4,7 @@ import { AvatarCoachOverlay } from './AvatarCoachOverlay';
 import { ExerciseAvatar, resolveAvatarMotionKey } from './ExerciseAvatar';
 import { colors, radius, spacing, typography } from '../constants/theme';
 import { getAvatarMovement } from '../data/avatar/movementCatalog';
+import { exerciseVisualDemoCatalog } from '../data/exercises/visualDemoCatalog';
 import { AvatarVariant, ExerciseDefinition } from '../types/program';
 
 type Props = {
@@ -65,7 +66,8 @@ export function AvatarMovementGuide({ variant, exercise, active = true, compact 
     [movement.techniquePoints, phase.key],
   );
 
-  const visualIsMapped = exercise.visualGuide?.status === 'mapped';
+  const visualIsMapped = exercise.visualGuide?.status === 'mapped' &&
+    Boolean(exerciseVisualDemoCatalog[exercise.id]);
 
   return (
     <View style={styles.wrapper}>
@@ -79,11 +81,12 @@ export function AvatarMovementGuide({ variant, exercise, active = true, compact 
           <Text style={styles.visualReviewEyebrow}>DEMONSTRAÇÃO VISUAL EM REVISÃO</Text>
           <Text style={styles.visualReviewTitle}>Use as instruções detalhadas deste exercício.</Text>
           <Text style={styles.visualReviewText}>
-            {exercise.visualGuide?.note ?? 'Ainda não há uma animação específica confiável para este movimento.'}
+            Ainda não há uma demonstração específica revisada para este movimento. Consulte as instruções textuais e interrompa se sentir desconforto.
           </Text>
         </View>
       )}
 
+      {!visualIsMapped ? <Text style={styles.visualReviewText}>As fases abaixo são orientações gerais de movimento, não uma demonstração visual deste exercício.</Text> : null}
       <View style={styles.phaseRow}>
         {movement.phases.map((item, index) => (
           <View key={item.key} style={[styles.phaseChip, index === phaseIndex && styles.phaseChipActive]}>

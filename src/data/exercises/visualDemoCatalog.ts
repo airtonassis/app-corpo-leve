@@ -10,7 +10,7 @@ export interface ExerciseVisualDemoFrame {
 export interface ExerciseVisualDemoDefinition {
   exerciseId: string;
   frames: ExerciseVisualDemoFrame[];
-  reviewStatus: 'pending' | 'approved' | 'revision_required';
+  reviewStatus: 'pending' | 'revision_required';
   version: string;
 }
 

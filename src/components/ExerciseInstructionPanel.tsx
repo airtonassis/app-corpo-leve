@@ -55,6 +55,7 @@ export function ExerciseInstructionPanel({ exercise, compact = false }: Props) {
       {!compact ? <Section title="3 · Retorne com controle" items={guide.returnInstructions} /> : null}
       {!compact ? <Section title="Respiração" items={guide.breathing} /> : null}
       <Section title="Observe durante o exercício" items={guide.attentionPoints} />
+      <Section title="Quando interromper" items={exercise.safetyCues} />
       {!compact ? <Section title="Antes de iniciar, confira" items={guide.environmentCheck} /> : null}
 
       <View style={styles.reviewBox}>
