@@ -22,7 +22,11 @@ import {
   canCompleteQuiz,
   getEligibleQuestions,
   getNextQuestion,
-  isQuestionEligible,
+  pruneIneligibleAnswers,
+  shouldCompleteQuiz,
+  QUIZ_MIN,
+  QUIZ_TARGET,
+  QUIZ_MAX,
 } from '../../src/services/assessment/quizEngine';
 import { buildAssessmentProfile } from '../../src/services/assessment/profileEngine';
 import { recommendInitialProgram } from '../../src/services/assessment/recommendationEngine';
@@ -32,9 +36,6 @@ import {
   saveAssessmentResult,
   saveAssessmentSession,
 } from '../../src/services/storage/assessmentStorage';
-
-const TARGET_MIN = 20;
-const TARGET_MAX = 35;
 
 function createSession(): QuizSession {
   return {
@@ -88,7 +89,10 @@ export default function QuizPerfilScreen() {
   }, [currentQuestionId, session.answers]);
 
   const answeredCount = Object.values(session.answers).filter(hasValue).length;
-  const estimatedTotal = Math.min(TARGET_MAX, Math.max(TARGET_MIN, getEligibleQuestions(session.answers).filter((q) => q.required || q.priority <= 4).length));
+  const estimatedTotal = Math.min(QUIZ_MAX, Math.max(QUIZ_MIN, QUIZ_TARGET, history.length +
+    getEligibleQuestions(session.answers).filter((q) =>
+      !session.askedQuestionIds.includes(q.id) &&
+      (q.required || ['PERF_010', 'FIT_001', 'FIT_003', 'FIT_004'].includes(q.id))).length));
 
   function persist(next: QuizSession) {
     setSession(next);
@@ -117,15 +121,7 @@ export default function QuizPerfilScreen() {
     const rawAnswers: QuizAnswerMap = { ...session.answers, [currentQuestion.id]: value };
 
     // Remove respostas de ramos que deixaram de ser elegíveis quando o usuário volta e muda algo.
-    const validIds = new Set(
-      getEligibleQuestions(rawAnswers)
-        .filter((question) => isQuestionEligible(question, rawAnswers))
-        .map((question) => question.id)
-    );
-    const prunedAnswers: QuizAnswerMap = {};
-    Object.entries(rawAnswers).forEach(([id, answer]) => {
-      if (validIds.has(id) || id === currentQuestion.id) prunedAnswers[id] = answer;
-    });
+    const prunedAnswers = pruneIneligibleAnswers(rawAnswers);
 
     persist({ ...session, displayName: displayName.trim(), answers: prunedAnswers });
   }
@@ -159,14 +155,14 @@ export default function QuizPerfilScreen() {
 
     // O fluxo adaptativo encerra quando não há mais perguntas relevantes ou quando
     // já há informação suficiente e todas as obrigatórias foram respondidas.
-    const enoughAnswers = answeredCount >= TARGET_MIN && canCompleteQuiz(session.answers);
-    const shouldFinish = !next || (enoughAnswers && next.priority >= 7);
+    const shouldFinish = shouldCompleteQuiz(session.answers, asked) || (!next && canCompleteQuiz(session.answers));
 
     if (shouldFinish) {
       await finishQuiz();
       return;
     }
 
+    if (!next) return;
     const nextHistory = [...history.filter((id) => id !== next.id), next.id];
     setHistory(nextHistory);
     setCurrentQuestionId(next.id);
@@ -179,6 +175,7 @@ export default function QuizPerfilScreen() {
     const previous = nextHistory[nextHistory.length - 1];
     setHistory(nextHistory);
     setCurrentQuestionId(previous);
+    persist({ ...session, askedQuestionIds: nextHistory });
   }
 
   async function finishQuiz() {
@@ -298,7 +295,7 @@ export default function QuizPerfilScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <QuizProgress current={Math.max(answeredCount + 1, 1)} estimatedTotal={estimatedTotal} />
+        <QuizProgress current={Math.max(history.length, 1)} estimatedTotal={estimatedTotal} />
 
         <View style={{ marginTop: spacing.lg }}>
           <QuizQuestionCard
