@@ -22,6 +22,6 @@ export const exerciseVisualAssetCatalog: Record<
 
   'plank-forearm': {
     preparar: require('../../../assets/exercises/plank-forearm/preparar.png'),
-    executar: require('../../../assets/exercises/plank-forearm/executar.png'),
+    executar: require('../../../assets/exercises/plank-forearm/sustentar.png'),
   },
 };

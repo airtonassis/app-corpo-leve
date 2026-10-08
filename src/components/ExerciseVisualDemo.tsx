@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 
 import { colors, radius, spacing, typography } from '../constants/theme';
-import { exerciseVisualAssetCatalog } from '../data/exercises/visualAssetCatalog';
+import { getExerciseImages } from '../data/exercises/exerciseImageCatalog';
 import { exerciseVisualDemoCatalog } from '../data/exercises/visualDemoCatalog';
 import { AvatarVariant, ExerciseDefinition } from '../types/program';
 import { ExerciseAvatar } from './ExerciseAvatar';
@@ -27,7 +27,7 @@ export function ExerciseVisualDemo({
     return null;
   }
 
-  const visualAssets = exerciseVisualAssetCatalog[exercise.id];
+  const visualAssets = getExerciseImages(exercise.id);
 
   return (
     <View style={styles.wrap}>
@@ -48,7 +48,11 @@ export function ExerciseVisualDemo({
 
       <View style={styles.frames}>
         {demo.frames.map((frame) => {
-          const imageSource = visualAssets?.[frame.phase];
+          const imageSource = visualAssets.find(
+            (image) =>
+            image.phase === frame.phase ||
+            (frame.phase === 'executar' && image.phase === 'sustentar')
+          )?.source;
 
           return (
             <View key={frame.order} style={styles.frame}>
