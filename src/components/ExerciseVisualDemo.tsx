@@ -55,11 +55,6 @@ export function ExerciseVisualDemo({
       instruction: instruction?.instruction ?? '',
     };
   });
-
-  if (!demo || exercise.visualGuide?.status !== 'mapped') {
-    return null;
-  }
-
   
   return (
     <View style={styles.wrap}>
