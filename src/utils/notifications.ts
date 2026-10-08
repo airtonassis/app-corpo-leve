@@ -30,11 +30,12 @@ async function configurarHandlerSeNecessario(
 ) {
   if (handlerConfigurado) return;
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+  handleNotification: async () => ({
+  shouldShowBanner: true,
+  shouldShowList: true,
+  shouldPlaySound: true,
+  shouldSetBadge: false,
+  }),
   });
   handlerConfigurado = true;
 }
@@ -97,9 +98,9 @@ export async function agendarLembreteDiario(hora = 20, minuto = 0): Promise<void
         body: 'Você ainda não concluiu o treino de hoje. Que tal 15 minutos agora?',
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: hora,
         minute: minuto,
-        repeats: true,
       },
     });
   } catch (erro) {

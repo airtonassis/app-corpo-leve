@@ -262,8 +262,8 @@ export default function ProgramDayScreen() {
     setMode('active');
   }
 
-  function completeSet() {
-    if (!setStartedAtRef.current) return;
+    function completeSet() {
+    if (!prescription || !setStartedAtRef.current) return;
     const completedAt = new Date().toISOString();
     const activeSeconds = Math.max(1, Math.floor((Date.now() - setStartedAtRef.current) / 1000));
     const setRecord: SetExecutionRecord = {
@@ -324,6 +324,7 @@ export default function ProgramDayScreen() {
   }
 
   function applyFeedback(effort: EffortFeedback) {
+    if (!prescription || !day) return;
     const exerciseId = prescription.exerciseId;
     const completedAt = new Date().toISOString();
     const updatedRecords = records.map((item) => item.exerciseId === exerciseId
@@ -347,6 +348,7 @@ export default function ProgramDayScreen() {
   }
 
   async function finishDay(finalRecords: ExerciseExecutionRecord[]) {
+    if (!program) return;
     const completedAt = new Date().toISOString();
     const activeSeconds = finalRecords.reduce((sum, item) => sum + item.activeSeconds, 0);
     const restSeconds = finalRecords.reduce((sum, item) => sum + item.restSeconds, 0);

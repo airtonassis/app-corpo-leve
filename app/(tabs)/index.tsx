@@ -107,6 +107,7 @@ export default function DashboardScreen() {
                   (currentProgress.completedDays || 0) + 1,
                   program.durationDays,
                 );
+               if (!journey) return;
                 router.push(`/programa/dia/${Math.max(1, nextDay)}?cycle=${journey.currentCycle}`);
               }}
               style={{ marginTop: spacing.md }}
