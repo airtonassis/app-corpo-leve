@@ -22,10 +22,17 @@ export function ExerciseVisualDemo({
   variant,
 }: Props) {
   const demo = exerciseVisualDemoCatalog[exercise.id];
+  
   const images = getExerciseImages(exercise.id);
 
   if (images.length === 0) {
-    return null;
+    return (
+      <View style={{ padding: 16, backgroundColor: '#FFF3CD' }}>
+        <Text style={{ color: '#333333' }}>
+          DIAGNÓSTICO: nenhuma imagem cadastrada para {exercise.id}
+        </Text>
+      </View>
+    );
   }
 
   const frames = images.map((image, index) => {
