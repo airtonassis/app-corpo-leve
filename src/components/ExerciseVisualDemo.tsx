@@ -7,10 +7,10 @@ import {
 } from 'react-native';
 
 import { colors, radius, spacing, typography } from '../constants/theme';
-import { getExerciseImages } from '../data/exercises/exerciseImageCatalog';
 import { exerciseVisualDemoCatalog } from '../data/exercises/visualDemoCatalog';
 import { AvatarVariant, ExerciseDefinition } from '../types/program';
 import { ExerciseAvatar } from './ExerciseAvatar';
+import { getExerciseImages } from '../data/exercises/exerciseImageCatalog';
 
 type Props = {
   exercise: ExerciseDefinition;
@@ -22,13 +22,38 @@ export function ExerciseVisualDemo({
   variant,
 }: Props) {
   const demo = exerciseVisualDemoCatalog[exercise.id];
+  const images = getExerciseImages(exercise.id);
+
+  if (images.length === 0) {
+    return null;
+  }
+
+  const frames = images.map((image, index) => {
+    const instruction = demo?.frames.find(
+      (frame) =>
+        frame.phase === image.phase ||
+        (image.phase === 'sustentar' && frame.phase === 'executar')
+    );
+
+    return {
+      order: index + 1,
+      phase: image.phase,
+      source: image.source,
+      label: instruction?.label ?? {
+        preparar: 'Preparação',
+        executar: 'Execução',
+        retornar: 'Retorno',
+        sustentar: 'Sustentação',
+      }[image.phase],
+      instruction: instruction?.instruction ?? '',
+    };
+  });
 
   if (!demo || exercise.visualGuide?.status !== 'mapped') {
     return null;
   }
 
-  const visualAssets = getExerciseImages(exercise.id);
-
+  
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
@@ -45,14 +70,9 @@ export function ExerciseVisualDemo({
         Observe a sequência antes de iniciar. As imagens são
         demonstrativas e permanecem pendentes de validação profissional.
       </Text>
-
       <View style={styles.frames}>
-        {demo.frames.map((frame) => {
-          const imageSource = visualAssets.find(
-            (image) =>
-            image.phase === frame.phase ||
-            (frame.phase === 'executar' && image.phase === 'sustentar')
-          )?.source;
+        {frames.map((frame) => {
+          const imageSource = frame.source;
 
           return (
             <View key={frame.order} style={styles.frame}>
@@ -74,7 +94,7 @@ export function ExerciseVisualDemo({
                     exercise={exercise}
                     active={false}
                     compact
-                    phaseKey={frame.phase}
+                    phaseKey={frame.phase === 'sustentar' ? 'executar' : frame.phase}
                   />
                 )}
               </View>
